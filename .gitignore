@@ -1,0 +1,15 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno y contrasenas
+.env
+.env.local
+
+# Compilados[cite: 6]
+dist/[cite: 6]
+build/[cite: 6]
+
+# Basura del sistema[cite: 6]
+*.log[cite: 6]
+.DS_Store[cite: 6]
+Thumbs.db[cite: 6]
