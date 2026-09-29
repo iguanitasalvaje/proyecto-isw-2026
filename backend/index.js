@@ -7,7 +7,7 @@ app.use(express.json());
 
 app.get("/", (req, res) => {
   res.json({
-    mensaje: "Backend de Six Seven Transmisiones funcionando",
+    mensaje: "Backend",
   });
 });
 
