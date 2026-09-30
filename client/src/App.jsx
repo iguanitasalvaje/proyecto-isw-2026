@@ -7,7 +7,8 @@ import InventarioPage from "./pages/InventarioPage";
 import ReportesPage from "./pages/ReportesPage";
 import AuspiciadoresPage from "./pages/AuspiciadoresPage"
 import Eventos from "./pages/Eventos";
-{/*import FinanzasPage from "./pages/FinanzasPage";*/}
+import FinanzasPage from "./pages/FinanzasPage";
+import CalculadoraPagos from "./pages/CalculadoraPagos/CalculadoraPagos";
 
 import "./App.css";
 
@@ -26,9 +27,10 @@ function App() {
             
             {/* 2. Registras las nuevas rutas aquí: */}
             <Route path="/eventos" element={<Eventos />} />
-            {/*<Route path="/finanzas" element={<FinanzasPage />} />*/}
+            <Route path="/finanzas" element={<FinanzasPage />} />
             <Route path="/reportes" element={<ReportesPage />} />
             <Route path="/auspiciadores" element={<AuspiciadoresPage />} />
+            <Route path="/calculadora-pagos" element={<CalculadoraPagos />} />
 
             {/* 3. Ruta 404: */}
             <Route path="*" element={
