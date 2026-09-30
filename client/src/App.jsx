@@ -1,122 +1,50 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Sidebar from "./components/Sidebar";
+
+// 1. Importas las pantallas desde pages/
+import Dashboard from "./pages/Dueno/Dashboard";
+import InventarioPage from "./pages/InventarioPage";
+import ReportesPage from "./pages/ReportesPage";
+import AuspiciadoresPage from "./pages/AuspiciadoresPage"
+import Eventos from "./pages/Eventos";
+import FinanzasPage from "./pages/FinanzasPage";
+import CalculadoraPagos from "./pages/CalculadoraPagos/CalculadoraPagos";
+
+import "./App.css";
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <BrowserRouter>
+      <div style={{ display: 'flex', width: '100%', minHeight: '100vh', background: '#090d16' }}>
+        {/* La barra lateral se mantiene visible en todo momento */}
+        <Sidebar />
 
-      <div className="ticks"></div>
+        {/* El contenido cambia según la ruta activa */}
+        <main style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/inventario" element={<InventarioPage />} />
+            
+            {/* 2. Registras las nuevas rutas aquí: */}
+            <Route path="/eventos" element={<Eventos />} />
+            <Route path="/finanzas" element={<FinanzasPage />} />
+            <Route path="/reportes" element={<ReportesPage />} />
+            <Route path="/auspiciadores" element={<AuspiciadoresPage />} />
+            <Route path="/calculadora-pagos" element={<CalculadoraPagos />} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+            {/* 3. Ruta 404: */}
+            <Route path="*" element={
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 pt-32">
+                <h2 className="text-6xl font-bold text-white mb-4">404</h2>
+                <p className="text-xl">Página no encontrada</p>
+                <p className="text-sm mt-2 text-gray-500">Este módulo aún no ha sido implementado.</p>
+              </div>
+            } />
+          </Routes>
+        </main>
+      </div>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
