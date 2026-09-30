@@ -1,39 +1,41 @@
 import { useState, useEffect } from "react";
 
 export default function Dashboard() {
-  const [filtro, setFiltro] = useState("mes");
-  const [utilidad, setUtilidad] = useState(0);
-
-  useEffect(() => {
-    const cargarDatosSimulados = () => {
-      const ganancia = filtro === "mes" ? 2500000 : 850000;
-      setUtilidad(ganancia);
-    };
-    
-    cargarDatosSimulados();
-  }, [filtro]);
+  const [filtroMes, setFiltroMes] = useState("Septiembre");
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Dashboard de Rentabilidad</h2>
-      
-      <div className="mb-6">
-        <label className="mr-2 font-semibold">Evaluar desempeño por:</label>
-        <select 
-          value={filtro} 
-          onChange={(e) => setFiltro(e.target.value)}
-          className="border p-2 rounded"
-        >
-          <option value="mes">Mes / Temporada</option>
-          <option value="cliente">Cliente / Auspiciador</option>
-        </select>
+    <div className="min-h-screen bg-[#13151a] text-gray-300 p-8 font-sans">
+      <div className="mb-8 flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl font-bold text-white mb-1">Dashboard</h1>
+          <p className="text-sm text-gray-500">martes, 29 de septiembre de 2026</p>
+        </div>
+
+        <div className="flex gap-4">
+          <select
+            value={filtroMes}
+            onChange={(e) => setFiltroMes(e.target.value)}
+            className="bg-[#1c1f26] border border-gray-700 rounded p-2 text-sm text-white focus:outline-none"
+          >
+            <option value="Septiembre">Septiembre 2026</option>
+            <option value="Octubre">Octubre 2026</option>
+          </select>
+        </div>
       </div>
 
-      <div className="bg-white shadow-md rounded-lg p-6 max-w-sm border-l-4 border-green-500">
-        <h3 className="text-gray-500 text-sm font-bold uppercase">Utilidad Neta Real</h3>
-        <p className="text-3xl font-black text-green-700 mt-2">
-          ${utilidad.toLocaleString("es-CL")}
-        </p>
+      <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="bg-[#1c1f26] h-28 rounded-lg border border-gray-800 flex items-center justify-center">
+          <span className="text-gray-600 text-sm">Contenedor Ingresos</span>
+        </div>
+        <div className="bg-[#1c1f26] h-28 rounded-lg border border-gray-800 flex items-center justify-center">
+          <span className="text-gray-600 text-sm">Contenedor Gastos</span>
+        </div>
+        <div className="bg-[#1c1f26] h-28 rounded-lg border border-gray-800 flex items-center justify-center">
+          <span className="text-gray-600 text-sm">Contenedor Utilidad Neta</span>
+        </div>
+        <div className="bg-[#1c1f26] h-28 rounded-lg border border-gray-800 flex items-center justify-center">
+          <span className="text-gray-600 text-sm">Contenedor Por Cobrar</span>
+        </div>
       </div>
     </div>
   );
