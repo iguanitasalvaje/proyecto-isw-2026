@@ -1,17 +1,10 @@
-/* =========================
-   CALCULADORA DE PAGOS
-   ========================= */
-
 .pagos-app {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-
   display: flex;
+  width: 100%;
   min-height: 100vh;
-  overflow: auto;
+  box-sizing: border-box;
 
-  background: #0c1117;
+  background: #090d16;
   color: #f4f7fb;
 
   font-family:
@@ -23,22 +16,8 @@
     sans-serif;
 }
 
-/* =========================
-   SIDEBAR
-   ========================= */
-
 .pagos-sidebar {
-  width: 230px;
-  min-width: 230px;
-  min-height: 100vh;
-
-  display: flex;
-  flex-direction: column;
-
-  padding: 18px 12px;
-
-  background: #151b23;
-  border-right: 1px solid #242d39;
+  display: none !important;
 }
 
 .pagos-marca {
