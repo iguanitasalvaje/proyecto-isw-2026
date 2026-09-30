@@ -6,8 +6,8 @@ import Dashboard from "./pages/Dueno/Dashboard";
 import InventarioPage from "./pages/InventarioPage";
 import ReportesPage from "./pages/ReportesPage";
 import AuspiciadoresPage from "./pages/AuspiciadoresPage"
-{/*import EventosPage from "./pages/EventosPage";
-import FinanzasPage from "./pages/FinanzasPage";*/}
+import Eventos from "./pages/Eventos";
+{/*import FinanzasPage from "./pages/FinanzasPage";*/}
 
 import "./App.css";
 
@@ -25,8 +25,8 @@ function App() {
             <Route path="/inventario" element={<InventarioPage />} />
             
             {/* 2. Registras las nuevas rutas aquí: */}
-            {/*<Route path="/eventos" element={<EventosPage />} />
-            <Route path="/finanzas" element={<FinanzasPage />} />*/}
+            <Route path="/eventos" element={<Eventos />} />
+            {/*<Route path="/finanzas" element={<FinanzasPage />} />*/}
             <Route path="/reportes" element={<ReportesPage />} />
             <Route path="/auspiciadores" element={<AuspiciadoresPage />} />
 
