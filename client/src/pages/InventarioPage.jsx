@@ -13,85 +13,83 @@ const EQUIPOS_INICIALES = [
 export default function InventarioPage() {
   const [tabActiva, setTabActiva] = useState('equipos');
 
-  const obtenerEstiloBadge = (estado) => {
+  const obtenerClasesBadge = (estado) => {
     switch (estado) {
       case 'Disponible':
-        return { color: '#4ade80', background: 'rgba(74, 222, 128, 0.1)', border: '1px solid rgba(74, 222, 128, 0.25)' };
+        return 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/25';
       case 'En Uso':
-        return { color: '#60a5fa', background: 'rgba(96, 165, 250, 0.1)', border: '1px solid rgba(96, 165, 250, 0.25)' };
+        return 'text-blue-400 bg-blue-500/10 border border-blue-500/25';
       case 'Dañado':
-        return { color: '#fbbf24', background: 'rgba(251, 191, 36, 0.1)', border: '1px solid rgba(251, 191, 36, 0.25)' };
+        return 'text-amber-400 bg-amber-500/10 border border-amber-500/25';
       case 'Perdido':
-        return { color: '#f87171', background: 'rgba(248, 113, 113, 0.1)', border: '1px solid rgba(248, 113, 113, 0.25)' };
+        return 'text-rose-400 bg-rose-500/10 border border-rose-500/25';
       default:
-        return { color: '#94a3b8', background: '#1e293b' };
+        return 'text-slate-400 bg-slate-800';
     }
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#090d16', color: '#f8fafc', padding: '32px 48px', boxSizing: 'border-box', fontFamily: 'system-ui, sans-serif' }}>
+    <div className="min-h-screen bg-[#090d16] text-slate-100 p-8 font-sans box-border">
       
       {/* Encabezado */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1e293b', paddingBottom: '24px' }}>
+      <div className="flex justify-between items-center border-b border-slate-800 pb-6">
         <div>
-          <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0, color: '#ffffff' }}>Inventario</h1>
-          <p style={{ fontSize: '14px', color: '#64748b', marginTop: '6px' }}>14 equipos registrados · 4 kits configurados</p>
+          <h1 className="text-3xl font-bold text-white m-0">Inventario</h1>
+          <p className="text-sm text-slate-500 mt-1.5">14 equipos registrados · 4 kits configurados</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button style={{ padding: '9px 18px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>
+        <div className="flex gap-3">
+          <button className="px-4 py-2.5 bg-blue-600 text-white border-none rounded-lg cursor-pointer font-semibold text-xs hover:bg-blue-500 transition-colors">
             + Nuevo Kit
           </button>
-          <button style={{ padding: '9px 18px', background: '#1e293b', color: '#f8fafc', border: '1px solid #334155', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>
+          <button className="px-4 py-2.5 bg-slate-800 text-slate-100 border border-slate-700 rounded-lg cursor-pointer font-semibold text-xs hover:bg-slate-700 transition-colors">
             + Nuevo Equipo
           </button>
         </div>
       </div>
 
-      {/* Tarjetas resumen (RF9 / RF13) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', margin: '28px 0' }}>
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-          <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, letterSpacing: '0.05em' }}>Disponibles</span>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#4ade80', margin: '10px 0 0 0' }}>10</p>
+      {/* Tarjetas resumen */}
+      <div className="grid grid-cols-4 gap-4 my-7">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <span className="text-[11px] uppercase text-slate-500 font-bold tracking-wider">Disponibles</span>
+          <p className="text-3xl font-bold text-emerald-400 mt-2.5 mb-0">10</p>
         </div>
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-          <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, letterSpacing: '0.05em' }}>En Uso</span>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#60a5fa', margin: '10px 0 0 0' }}>2</p>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <span className="text-[11px] uppercase text-slate-500 font-bold tracking-wider">En Uso</span>
+          <p className="text-3xl font-bold text-blue-400 mt-2.5 mb-0">2</p>
         </div>
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-          <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, letterSpacing: '0.05em' }}>Dañados</span>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#fbbf24', margin: '10px 0 0 0' }}>1</p>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <span className="text-[11px] uppercase text-slate-500 font-bold tracking-wider">Dañados</span>
+          <p className="text-3xl font-bold text-amber-400 mt-2.5 mb-0">1</p>
         </div>
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-          <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, letterSpacing: '0.05em' }}>Perdidos</span>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#f87171', margin: '10px 0 0 0' }}>1</p>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <span className="text-[11px] uppercase text-slate-500 font-bold tracking-wider">Perdidos</span>
+          <p className="text-3xl font-bold text-rose-400 mt-2.5 mb-0">1</p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+      <div className="flex gap-2 mb-5">
         {[
           { id: 'kits', label: 'Kits' },
           { id: 'equipos', label: 'Todos los Equipos' },
           { id: 'bajas', label: 'Dados de Baja' },
         ].map((tab) => {
           const activo = tabActiva === tab.id;
+          let clasesTab = 'px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-colors ';
+          
+          if (activo) {
+            clasesTab += tab.id === 'bajas' 
+              ? 'bg-rose-500/20 text-rose-400 border border-rose-500' 
+              : 'bg-blue-600 text-white';
+          } else {
+            clasesTab += 'bg-slate-900 text-slate-500 hover:text-slate-300';
+          }
+
           return (
             <button
               key={tab.id}
               onClick={() => setTabActiva(tab.id)}
-              style={{
-                padding: '8px 18px',
-                borderRadius: '8px',
-                border: tab.id === 'bajas' && activo ? '1px solid #ef4444' : 'none',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: 600,
-                background: activo
-                  ? tab.id === 'bajas' ? 'rgba(239, 68, 68, 0.2)' : '#2563eb'
-                  : '#0f172a',
-                color: activo ? (tab.id === 'bajas' ? '#f87171' : '#ffffff') : '#64748b',
-                transition: '0.15s ease',
-              }}
+              className={clasesTab}
             >
               {tab.label}
             </button>
@@ -101,45 +99,45 @@ export default function InventarioPage() {
 
       {/* Tabla de Equipos */}
       {tabActiva === 'equipos' && (
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-            <thead style={{ background: '#0b1120', color: '#64748b', borderBottom: '1px solid #1e293b' }}>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+          <table className="w-full border-collapse text-left text-xs">
+            <thead className="bg-[#0b1120] text-slate-500 border-b border-slate-800">
               <tr>
-                <th style={{ padding: '14px 20px', fontWeight: 600 }}>Equipo</th>
-                <th style={{ padding: '14px 20px', fontWeight: 600 }}>Tipo</th>
-                <th style={{ padding: '14px 20px', fontWeight: 600 }}>Serie</th>
-                <th style={{ padding: '14px 20px', fontWeight: 600 }}>Estado</th>
-                <th style={{ padding: '14px 20px', fontWeight: 600 }}>Kits</th>
-                <th style={{ padding: '14px 20px', fontWeight: 600, textAlign: 'right' }}>Acción</th>
+                <th className="py-3.5 px-5 font-semibold">Equipo</th>
+                <th className="py-3.5 px-5 font-semibold">Tipo</th>
+                <th className="py-3.5 px-5 font-semibold">Serie</th>
+                <th className="py-3.5 px-5 font-semibold">Estado</th>
+                <th className="py-3.5 px-5 font-semibold">Kits</th>
+                <th className="py-3.5 px-5 font-semibold text-right">Acción</th>
               </tr>
             </thead>
             <tbody>
               {EQUIPOS_INICIALES.map((item) => (
-                <tr key={item.id} style={{ borderBottom: '1px solid #1e293b' }}>
-                  <td style={{ padding: '14px 20px', fontWeight: 500, color: '#f8fafc' }}>{item.nombre}</td>
-                  <td style={{ padding: '14px 20px', color: '#94a3b8' }}>{item.tipo}</td>
-                  <td style={{ padding: '14px 20px', color: '#64748b', fontFamily: 'monospace' }}>{item.serie}</td>
-                  <td style={{ padding: '14px 20px' }}>
-                    <span style={{ ...obtenerEstiloBadge(item.estado), padding: '4px 10px', borderRadius: '16px', fontSize: '12px', fontWeight: 600 }}>
+                <tr key={item.id} className="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
+                  <td className="py-3.5 px-5 font-medium text-slate-100">{item.nombre}</td>
+                  <td className="py-3.5 px-5 text-slate-400">{item.tipo}</td>
+                  <td className="py-3.5 px-5 text-slate-500 font-mono">{item.serie}</td>
+                  <td className="py-3.5 px-5">
+                    <span className={`px-2.5 py-1 rounded-full text-[12px] font-semibold ${obtenerClasesBadge(item.estado)}`}>
                       {item.estado}
                     </span>
                   </td>
-                  <td style={{ padding: '14px 20px' }}>
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  <td className="py-3.5 px-5">
+                    <div className="flex gap-1.5 flex-wrap">
                       {item.kits.length > 0 ? (
                         item.kits.map((k, idx) => (
-                          <span key={idx} style={{ background: '#1e293b', color: '#cbd5e1', fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #334155' }}>
+                          <span key={idx} className="bg-slate-800 text-slate-300 text-[11px] px-2 py-0.5 rounded border border-slate-700">
                             {k}
                           </span>
                         ))
                       ) : (
-                        <span style={{ color: '#475569' }}>—</span>
+                        <span className="text-slate-600">—</span>
                       )}
                     </div>
                   </td>
-                  <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                  <td className="py-3.5 px-5 text-right">
                     {(item.estado === 'Dañado' || item.estado === 'Perdido') && (
-                      <button style={{ padding: '6px 12px', fontSize: '12px', fontWeight: 600, color: '#f87171', background: 'rgba(248, 113, 113, 0.1)', border: '1px solid rgba(248, 113, 113, 0.3)', borderRadius: '6px', cursor: 'pointer' }}>
+                      <button className="px-3 py-1.5 text-xs font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-md cursor-pointer hover:bg-rose-500/20 transition-colors">
                         Dar de baja
                       </button>
                     )}
@@ -153,18 +151,18 @@ export default function InventarioPage() {
 
       {/* Vista Dados de Baja */}
       {tabActiva === 'bajas' && (
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '60px 20px', textAlign: 'center' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#1e293b', color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'justify-center', margin: '0 auto 16px auto', fontSize: '20px', lineHeight: '48px' }}>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-16 text-center">
+          <div className="w-12 h-12 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center mx-auto mb-4 text-xl">
             ✓
           </div>
-          <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: '#f8fafc' }}>Sin equipos dados de baja</h3>
-          <p style={{ fontSize: '13px', color: '#64748b', marginTop: '6px' }}>Los equipos eliminados del inventario aparecerán aquí.</p>
+          <h3 className="text-base font-semibold text-slate-100 m-0">Sin equipos dados de baja</h3>
+          <p className="text-xs text-slate-500 mt-1.5">Los equipos eliminados del inventario aparecerán aquí.</p>
         </div>
       )}
 
       {/* Vista Kits */}
       {tabActiva === 'kits' && (
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '40px 20px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-10 text-center text-slate-500 text-sm">
           Configuración y asignación de Kits lógicos (en construcción).
         </div>
       )}
