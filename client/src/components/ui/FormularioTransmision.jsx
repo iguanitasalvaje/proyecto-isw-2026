@@ -1,53 +1,120 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-const FormularioTransmision = () => {
+const FormularioTransmision = ({ onClose }) => {
+  const [formData, setFormData] = useState({
+    nombre: '',
+    cliente: '',
+    precioBase: '',
+    fecha: '',
+    personalRequerido: '',
+  });
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    console.log('Datos de la transmisión agendada:', formData);
+    // Aquí irá la llamada a la API POST /api/eventos cuando conectemos el backend
+    if (onClose) onClose();
+  };
+
   return (
-    <div style={{
-      maxWidth: '500px',
-      margin: '0 auto',
-      padding: '30px',
-      backgroundColor: '#f9f9f9',
-      borderRadius: '10px',
-      boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-      fontFamily: 'sans-serif'
-    }}>
-      <h2 style={{ color: '#2c3e50', textAlign: 'center', marginBottom: '20px' }}>Crear Nueva Transmisión</h2>
-      <form style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        
+    <div className="bg-slate-800 text-slate-100 p-6 rounded-xl border border-slate-700 shadow-2xl max-w-lg w-full">
+      <h2 className="text-2xl font-bold text-white mb-6 text-center">
+        Crear Nueva Transmisión
+      </h2>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Nombre del Evento */}
         <div>
-          <label style={{ display: 'block', marginBottom: '5px', color: '#34495e', fontWeight: 'bold' }}>Precio Base ($):</label>
-          <input type="number" name="precioBase" required placeholder="Ej: 150000"
-            style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+          <label className="block text-sm font-medium text-slate-300 mb-1">
+            Nombre del Evento:
+          </label>
+          <input
+            type="text"
+            name="nombre"
+            required
+            placeholder="Ej: Lanzamiento Producto Falabella"
+            value={formData.nombre}
+            onChange={handleChange}
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm"
+          />
         </div>
-        
+
+        {/* Cliente */}
         <div>
-          <label style={{ display: 'block', marginBottom: '5px', color: '#34495e', fontWeight: 'bold' }}>Fecha de la transmisión:</label>
-          <input type="date" name="fecha" required
-            style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+          <label className="block text-sm font-medium text-slate-300 mb-1">
+            Cliente:
+          </label>
+          <input
+            type="text"
+            name="cliente"
+            required
+            placeholder="Ej: Falabella Corporativo"
+            value={formData.cliente}
+            onChange={handleChange}
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm"
+          />
         </div>
-        
+
+        {/* Precio Base (Requisito RF2) */}
         <div>
-          <label style={{ display: 'block', marginBottom: '5px', color: '#34495e', fontWeight: 'bold' }}>Personal Requerido:</label>
-          <textarea name="personalRequerido" placeholder="Ej: 2 Camarógrafos..." rows="3"
-            style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box', resize: 'none' }} />
+          <label className="block text-sm font-medium text-slate-300 mb-1">
+            Precio Base ($):
+          </label>
+          <input
+            type="number"
+            name="precioBase"
+            required
+            placeholder="Ej: 150000"
+            value={formData.precioBase}
+            onChange={handleChange}
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm"
+          />
         </div>
-        
-        <button type="submit"
-          style={{
-            backgroundColor: '#3498db',
-            color: 'white',
-            padding: '12px',
-            border: 'none',
-            borderRadius: '5px',
-            fontSize: '1rem',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            marginTop: '10px',
-            transition: 'background 0.3s'
-          }}>
+
+        {/* Fecha (Requisito RF2) */}
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1">
+            Fecha de la transmisión:
+          </label>
+          <input
+            type="date"
+            name="fecha"
+            required
+            value={formData.fecha}
+            onChange={handleChange}
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-blue-500 text-sm scheme-dark"
+          />
+        </div>
+
+        {/* Personal Requerido (Requisito RF2) */}
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1">
+            Personal Requerido:
+          </label>
+          <textarea
+            name="personalRequerido"
+            rows="3"
+            placeholder="Ej: 2 Camarógrafos, 1 Sonidista..."
+            value={formData.personalRequerido}
+            onChange={handleChange}
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm resize-none"
+          />
+        </div>
+
+        {/* Botón de envío */}
+        <button
+          type="submit"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg text-sm transition-colors cursor-pointer mt-2"
+        >
           Agendar Transmisión
         </button>
-        
       </form>
     </div>
   );

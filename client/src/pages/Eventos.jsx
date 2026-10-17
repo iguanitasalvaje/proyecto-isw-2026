@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
+import FormularioTransmision from '../components/ui/FormularioTransmision';
 
 const Eventos = () => {
-  // Datos simulados solo para el diseño visual
+  // Estado para controlar la visibilidad del modal del formulario
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+
+  // Arreglo de datos simulados para la tabla
   const eventos = [
     {
       id: 1,
@@ -10,12 +14,9 @@ const Eventos = () => {
       nombre: 'Lanzamiento Producto Falabella',
       cliente: 'Falabella Corporativo',
       tipo: 'Corporativo',
-      tipoColor: '#1e293b',
       lugar: 'Hotel W Santiago',
       ciudad: 'Santiago',
       estado: 'Confirmado',
-      estadoBg: '#1e3a8a',
-      estadoColor: '#60a5fa',
       ingresos: '$480.000',
       gastos: '$165.000',
       rentabilidad: '+$315.000',
@@ -27,12 +28,9 @@ const Eventos = () => {
       nombre: 'Final Copa Chile Sub-17',
       cliente: 'ANFP',
       tipo: 'Deportivo',
-      tipoColor: '#1e293b',
       lugar: 'Estadio Monumental',
       ciudad: 'Santiago',
       estado: 'Confirmado',
-      estadoBg: '#1e3a8a',
-      estadoColor: '#60a5fa',
       ingresos: '$1.200.000',
       gastos: '$393.000',
       rentabilidad: '+$807.000',
@@ -44,12 +42,9 @@ const Eventos = () => {
       nombre: 'Torneo Interempresas Basketball',
       cliente: 'Copec Empresas',
       tipo: 'Deportivo',
-      tipoColor: '#1e293b',
       lugar: 'Gimnasio Municipal Ñuñoa',
       ciudad: 'Santiago',
       estado: 'En Curso',
-      estadoBg: '#713f12',
-      estadoColor: '#facc15',
       ingresos: '$600.000',
       gastos: '$290.000',
       rentabilidad: '+$310.000',
@@ -60,13 +55,10 @@ const Eventos = () => {
       hora: '11:00',
       nombre: 'Graduación Ingeniería 2025',
       cliente: 'Universidad del Pacífico',
-      tipo: 'Graduacion',
-      tipoColor: '#3b0764',
+      tipo: 'Graduación',
       lugar: 'Casino Enjoy',
       ciudad: 'Santiago',
       estado: 'Confirmado',
-      estadoBg: '#1e3a8a',
-      estadoColor: '#60a5fa',
       ingresos: '$320.000',
       gastos: '$165.000',
       rentabilidad: '+$155.000',
@@ -74,120 +66,91 @@ const Eventos = () => {
   ];
 
   return (
-    <div style={{ backgroundColor: '#0f172a', color: '#f8fafc', padding: '30px', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+    <div className="min-h-screen bg-slate-900 text-slate-50 p-8 font-sans relative">
       
       {/* Encabezado Principal */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div>
-          <h1 style={{ fontSize: '2rem', fontWeight: 'bold', margin: 0, color: '#ffffff' }}>Eventos</h1>
-          <p style={{ color: '#94a3b8', fontSize: '0.95rem', marginTop: '5px' }}>
-            5 eventos · Rentabilidad total: <span style={{ color: '#22c55e', fontWeight: 'bold' }}>$2.180.000</span>
+          <h1 className="text-3xl font-bold text-white">Eventos</h1>
+          <p className="text-slate-400 text-sm mt-1">
+            5 eventos · Rentabilidad total: <span className="text-green-500 font-bold">$2.180.000</span>
           </p>
         </div>
-        <button style={{
-          backgroundColor: '#2563eb',
-          color: '#ffffff',
-          border: 'none',
-          padding: '10px 20px',
-          borderRadius: '8px',
-          fontWeight: 'bold',
-          fontSize: '0.95rem',
-          cursor: 'pointer'
-        }}>
+        
+        {/* Botón azul configurado con evento onClick */}
+        <button 
+          onClick={() => setMostrarFormulario(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition-colors cursor-pointer self-start md:self-auto"
+        >
           + Nuevo Evento
         </button>
       </div>
 
       {/* Barra de Búsqueda y Filtros */}
-      <div style={{ display: 'flex', gap: '15px', marginBottom: '25px' }}>
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <input 
           type="text" 
           placeholder="Buscar evento, cliente, ciudad..." 
-          style={{
-            backgroundColor: '#1e293b',
-            border: '1px solid #334155',
-            color: '#f8fafc',
-            padding: '10px 15px',
-            borderRadius: '6px',
-            width: '300px'
-          }}
+          className="bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-400 px-4 py-2.5 rounded-md w-full sm:w-80 focus:outline-none focus:border-blue-500"
         />
-        <select style={{ backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f8fafc', padding: '10px 15px', borderRadius: '6px' }}>
+        <select className="bg-slate-800 border border-slate-700 text-slate-100 px-4 py-2.5 rounded-md focus:outline-none focus:border-blue-500 cursor-pointer">
           <option>Todos los estados</option>
         </select>
-        <select style={{ backgroundColor: '#1e293b', border: '1px solid #334155', color: '#f8fafc', padding: '10px 15px', borderRadius: '6px' }}>
+        <select className="bg-slate-800 border border-slate-700 text-slate-100 px-4 py-2.5 rounded-md focus:outline-none focus:border-blue-500 cursor-pointer">
           <option>Todos los tipos</option>
         </select>
       </div>
 
       {/* Tabla de Eventos */}
-      <div style={{ backgroundColor: '#1e293b', borderRadius: '10px', overflow: 'hidden', border: '1px solid #334155' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+      <div className="bg-slate-800 rounded-xl overflow-x-auto border border-slate-700 shadow-lg">
+        <table className="w-full text-left text-sm border-collapse">
           <thead>
-            <tr style={{ borderBottom: '1px solid #334155', color: '#64748b', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-              <th style={{ padding: '15px 20px' }}>Fecha</th>
-              <th style={{ padding: '15px 20px' }}>Evento</th>
-              <th style={{ padding: '15px 20px' }}>Tipo</th>
-              <th style={{ padding: '15px 20px' }}>Lugar</th>
-              <th style={{ padding: '15px 20px' }}>Estado</th>
-              <th style={{ padding: '15px 20px' }}>Ingresos</th>
-              <th style={{ padding: '15px 20px' }}>Gastos</th>
-              <th style={{ padding: '15px 20px' }}>Rentabilidad</th>
-              <th style={{ padding: '15px 20px' }}></th>
+            <tr className="border-b border-slate-700 text-slate-400 uppercase text-xs tracking-wider">
+              <th className="px-6 py-4">Fecha</th>
+              <th className="px-6 py-4">Evento</th>
+              <th className="px-6 py-4">Tipo</th>
+              <th className="px-6 py-4">Lugar</th>
+              <th className="px-6 py-4">Estado</th>
+              <th className="px-6 py-4">Ingresos</th>
+              <th className="px-6 py-4">Gastos</th>
+              <th className="px-6 py-4">Rentabilidad</th>
+              <th className="px-6 py-4"></th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-700/60">
             {eventos.map((ev) => (
-              <tr key={ev.id} style={{ borderBottom: '1px solid #334155' }}>
-                <td style={{ padding: '15px 20px', color: '#94a3b8' }}>
-                  <div style={{ color: '#f8fafc', fontWeight: '500' }}>{ev.fecha}</div>
-                  <div style={{ fontSize: '0.8rem' }}>{ev.hora}</div>
+              <tr key={ev.id} className="hover:bg-slate-700/30 transition-colors">
+                <td className="px-6 py-4 text-slate-400">
+                  <div className="text-slate-100 font-medium">{ev.fecha}</div>
+                  <div className="text-xs">{ev.hora}</div>
                 </td>
-                <td style={{ padding: '15px 20px' }}>
-                  <div style={{ fontWeight: 'bold', color: '#ffffff' }}>{ev.nombre}</div>
-                  <div style={{ color: '#64748b', fontSize: '0.8rem' }}>{ev.cliente}</div>
+                <td className="px-6 py-4">
+                  <div className="font-bold text-white">{ev.nombre}</div>
+                  <div className="text-slate-400 text-xs">{ev.cliente}</div>
                 </td>
-                <td style={{ padding: '15px 20px' }}>
-                  <span style={{
-                    backgroundColor: ev.tipoColor,
-                    color: '#94a3b8',
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    fontSize: '0.8rem',
-                    border: '1px solid #334155'
-                  }}>
+                <td className="px-6 py-4">
+                  <span className="bg-slate-900 text-slate-300 px-2.5 py-1 rounded-md text-xs border border-slate-700">
                     {ev.tipo}
                   </span>
                 </td>
-                <td style={{ padding: '15px 20px', color: '#94a3b8' }}>
-                  <div style={{ color: '#cbd5e1' }}>{ev.lugar}</div>
-                  <div style={{ fontSize: '0.8rem' }}>{ev.ciudad}</div>
+                <td className="px-6 py-4 text-slate-400">
+                  <div className="text-slate-200">{ev.lugar}</div>
+                  <div className="text-xs">{ev.ciudad}</div>
                 </td>
-                <td style={{ padding: '15px 20px' }}>
-                  <span style={{
-                    backgroundColor: ev.estadoBg,
-                    color: ev.estadoColor,
-                    padding: '4px 12px',
-                    borderRadius: '6px',
-                    fontWeight: 'bold',
-                    fontSize: '0.8rem'
-                  }}>
+                <td className="px-6 py-4">
+                  <span className={`px-3 py-1 rounded-md font-bold text-xs ${
+                    ev.estado === 'Confirmado' 
+                      ? 'bg-blue-950 text-blue-400 border border-blue-800' 
+                      : 'bg-amber-950 text-amber-400 border border-amber-800'
+                  }`}>
                     {ev.estado}
                   </span>
                 </td>
-                <td style={{ padding: '15px 20px', color: '#22c55e', fontWeight: 'bold' }}>{ev.ingresos}</td>
-                <td style={{ padding: '15px 20px', color: '#ef4444' }}>{ev.gastos}</td>
-                <td style={{ padding: '15px 20px', color: '#22c55e', fontWeight: 'bold' }}>{ev.rentabilidad}</td>
-                <td style={{ padding: '15px 20px', textAlign: 'right' }}>
-                  <button style={{
-                    backgroundColor: 'transparent',
-                    border: '1px solid #334155',
-                    color: '#94a3b8',
-                    padding: '5px 10px',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '0.8rem'
-                  }}>
+                <td className="px-6 py-4 text-green-500 font-bold">{ev.ingresos}</td>
+                <td className="px-6 py-4 text-red-400">{ev.gastos}</td>
+                <td className="px-6 py-4 text-green-500 font-bold">{ev.rentabilidad}</td>
+                <td className="px-6 py-4 text-right">
+                  <button className="border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md text-xs transition-colors cursor-pointer">
                     Vista rápida
                   </button>
                 </td>
@@ -196,6 +159,22 @@ const Eventos = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Ventana Modal del Formulario */}
+      {mostrarFormulario && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="relative w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden">
+            {/* Botón X para cerrar el modal */}
+            <button 
+              onClick={() => setMostrarFormulario(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 font-bold text-xl px-2 py-1 rounded cursor-pointer"
+            >
+              ✕
+            </button>
+            <FormularioTransmision />
+          </div>
+        </div>
+      )}
 
     </div>
   );
