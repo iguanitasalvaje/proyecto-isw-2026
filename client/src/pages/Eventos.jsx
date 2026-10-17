@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
+import FormularioTransmision from '../components/ui/FormularioTransmision';
 
 const Eventos = () => {
-  // Arreglo de datos simulados para estructurar la interfaz
+  // Estado para controlar la visibilidad del modal del formulario
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+
+  // Arreglo de datos simulados para la tabla
   const eventos = [
     {
       id: 1,
@@ -62,8 +66,7 @@ const Eventos = () => {
   ];
 
   return (
-    // Contenedor principal con fondo oscuro y altura completa
-    <div className="min-h-screen bg-slate-900 text-slate-50 p-8 font-sans">
+    <div className="min-h-screen bg-slate-900 text-slate-50 p-8 font-sans relative">
       
       {/* Encabezado Principal */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
@@ -74,8 +77,11 @@ const Eventos = () => {
           </p>
         </div>
         
-        {/* Botón azul principal */}
-        <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition-colors cursor-pointer self-start md:self-auto">
+        {/* Botón azul configurado con evento onClick */}
+        <button 
+          onClick={() => setMostrarFormulario(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition-colors cursor-pointer self-start md:self-auto"
+        >
           + Nuevo Evento
         </button>
       </div>
@@ -98,7 +104,6 @@ const Eventos = () => {
       {/* Tabla de Eventos */}
       <div className="bg-slate-800 rounded-xl overflow-x-auto border border-slate-700 shadow-lg">
         <table className="w-full text-left text-sm border-collapse">
-          {/* Cabecera */}
           <thead>
             <tr className="border-b border-slate-700 text-slate-400 uppercase text-xs tracking-wider">
               <th className="px-6 py-4">Fecha</th>
@@ -112,8 +117,6 @@ const Eventos = () => {
               <th className="px-6 py-4"></th>
             </tr>
           </thead>
-          
-          {/* Filas dinámicas */}
           <tbody className="divide-y divide-slate-700/60">
             {eventos.map((ev) => (
               <tr key={ev.id} className="hover:bg-slate-700/30 transition-colors">
@@ -135,7 +138,6 @@ const Eventos = () => {
                   <div className="text-xs">{ev.ciudad}</div>
                 </td>
                 <td className="px-6 py-4">
-                  {/* Badge condicional de estado */}
                   <span className={`px-3 py-1 rounded-md font-bold text-xs ${
                     ev.estado === 'Confirmado' 
                       ? 'bg-blue-950 text-blue-400 border border-blue-800' 
@@ -157,6 +159,22 @@ const Eventos = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Ventana Modal del Formulario */}
+      {mostrarFormulario && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="relative w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden">
+            {/* Botón X para cerrar el modal */}
+            <button 
+              onClick={() => setMostrarFormulario(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 font-bold text-xl px-2 py-1 rounded cursor-pointer"
+            >
+              ✕
+            </button>
+            <FormularioTransmision />
+          </div>
+        </div>
+      )}
 
     </div>
   );
