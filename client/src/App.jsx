@@ -13,7 +13,13 @@ import CalculadoraPagos from "./pages/CalculadoraPagos/CalculadoraPagos";
 
 import "./App.css";
 
+import RutaProtegida from "./components/RutaProtegida";
+import { useAuth } from "./context/AuthContext";
+
 function App() {
+
+  const { rolActivo } = useAuth();
+
   return (
     <BrowserRouter>
       <div style={{ display: 'flex', width: '100%', minHeight: '100vh', background: '#090d16' }}>
@@ -24,11 +30,36 @@ function App() {
         <main style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/inventario" element={<InventarioPage />} />
+
+            <Route
+              path="/inventario"
+              element={
+                <RutaProtegida rol={rolActivo} ruta="/inventario">
+                  <InventarioPage />
+                </RutaProtegida>
+              }
+            />
+
             {/* 2. Registras las nuevas rutas aquí: */}
-            <Route path="/eventos" element={<Eventos />} />
-            <Route path="/personal" element={<Personal />} />
-            <Route path="/finanzas" element={<FinanzasPage />} />
+
+            <Route
+               path="/eventos"
+               element={
+               <RutaProtegida rol={rolActivo} ruta="/eventos">
+                 <Eventos />
+                </RutaProtegida>
+              }
+            />
+
+            <Route
+              path="/finanzas"
+              element={
+                <RutaProtegida rol={rolActivo} ruta="/finanzas">
+                  <FinanzasPage />
+                </RutaProtegida>
+              }
+            />
+            
             <Route path="/reportes" element={<ReportesPage />} />
             <Route path="/auspiciadores" element={<AuspiciadoresPage />} />
             <Route path="/calculadora-pagos" element={<CalculadoraPagos />} />

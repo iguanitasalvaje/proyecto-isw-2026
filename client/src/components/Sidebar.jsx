@@ -1,9 +1,21 @@
 // client/src/components/Sidebar.jsx
-import React, { useState } from 'react';
+import React from 'react';
+import { useAuth } from '../context/AuthContext';
+import { ROLES } from '../config/permisos';
 import { NavLink } from 'react-router-dom';
+import { tienePermiso } from '../config/permisos';
 
 export default function Sidebar() {
-  const [perfilActivo, setPerfilActivo] = useState('Dueño');
+  const { rolActivo, setRolActivo } = useAuth();
+
+  const perfiles = [
+    { nombre: 'Dueño', rol: ROLES.DUENO },
+    { nombre: 'Contador', rol: ROLES.CONTADOR },
+    { nombre: 'Jefe Técnico', rol: ROLES.JEFE_TECNICO },
+  ];
+
+  const perfilActivo =
+    perfiles.find((perfil) => perfil.rol === rolActivo)?.nombre ?? 'Sin perfil';
 
   const navItems = [
     { label: 'Dashboard', path: '/' },
@@ -15,6 +27,18 @@ export default function Sidebar() {
     { label: 'Reportes', path: '/reportes' },
     { label: 'Calculadora Pagos', path: '/calculadora-pagos' },
   ];
+
+  // Filtramos únicamente los tres módulos definidos en RF1.
+  // Los demás permanecen visibles hasta definir sus permisos.
+  const modulosRF1 = ['/eventos', '/finanzas', '/inventario'];
+
+  const navItemsVisibles = navItems.filter((item) => {
+    if (!modulosRF1.includes(item.path)) {
+     return true;
+    }
+
+    return tienePermiso(rolActivo, item.path);
+  });
 
   return (
     <aside style={{
@@ -57,23 +81,23 @@ export default function Sidebar() {
           Perfil Activo
         </span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
-          {['Dueño', 'Contador', 'Jefe Técnico'].map((rol) => (
+          {perfiles.map(({ nombre, rol }) => (
             <button
               key={rol}
-              onClick={() => setPerfilActivo(rol)}
+              onClick={() => setRolActivo(rol)}
               style={{
                 padding: '7px 12px',
                 borderRadius: '6px',
-                border: perfilActivo === rol ? '1px solid #2563eb' : '1px solid transparent',
-                background: perfilActivo === rol ? 'rgba(37, 99, 235, 0.15)' : 'transparent',
-                color: perfilActivo === rol ? '#60a5fa' : '#94a3b8',
+                border: rolActivo === rol ? '1px solid #2563eb' : '1px solid transparent',
+                background: rolActivo === rol ? 'rgba(37, 99, 235, 0.15)' : 'transparent',
+                color: rolActivo === rol ? '#60a5fa' : '#94a3b8',
                 textAlign: 'left',
                 fontSize: '12px',
                 fontWeight: 600,
                 cursor: 'pointer'
               }}
             >
-              {rol}
+              {nombre}
             </button>
           ))}
         </div>
@@ -81,7 +105,7 @@ export default function Sidebar() {
 
       {/* Navegación por Módulos */}
       <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-        {navItems.map((item) => (
+        {navItemsVisibles.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
