@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import KitsPanel from '../components/kits/KitsPanel';
 
 // 1. Datos iniciales de prueba (Mock Data) con valor de reposición monetario (RF9 y RF13)
 const EQUIPOS_INICIALES = [
@@ -73,10 +74,10 @@ export default function InventarioPage() {
       <div className="flex justify-between items-center border-b border-[#1e293b] pb-6">
         <div>
           <h1 className="text-[30px] font-[700] text-[#f8fafc] m-0 tracking-tight">Inventario</h1>
-          <p className="text-[14px] font-[400] text-[#94a3b8] mt-1.5">{equipos.length} equipos registrados · 4 kits configurados</p>
+          <p className="text-[14px] font-[400] text-[#94a3b8] mt-1.5">{equipos.length} equipos registrados · Consulta los kits en su pestaña</p>
         </div>
         <div className="flex gap-3">
-          <button className="px-4 py-2.5 bg-[#2563eb] text-[#f8fafc] border-none rounded-lg cursor-pointer font-semibold text-[13px] hover:bg-[#1d4ed8] transition-colors">
+          <button onClick={() => setTabActiva('kits')} className="px-4 py-2.5 bg-[#2563eb] text-[#f8fafc] border-none rounded-lg cursor-pointer font-semibold text-[13px] hover:bg-[#1d4ed8] transition-colors">
             + Nuevo Kit
           </button>
           <button 
@@ -247,9 +248,7 @@ export default function InventarioPage() {
 
       {/* Vista Kits */}
       {tabActiva === 'kits' && (
-        <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-10 text-center text-[#64748b] text-[14px]">
-          Configuración y asignación de Kits lógicos (en construcción).
-        </div>
+        <KitsPanel />
       )}
 
       {/* Modal interactivo de Registro de Nuevo Equipo (RF9) */}

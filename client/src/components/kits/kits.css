@@ -1,0 +1,37 @@
+.kits-rf5, .kits-panel {
+  color: #f8fafc;
+  font: 14px system-ui, sans-serif;
+}
+.kits-panel {
+  margin: 20px 0;
+  padding: 22px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+}
+.kits-panel h2 { margin: 0 0 12px; font-size: 20px; font-weight: 700; }
+.kits-panel h3 { font-size: 16px; margin-top: 20px; }
+.kits-panel p, .kits-panel dt { color: #94a3b8; }
+.kits-panel label { display: block; margin: 12px 0 6px; color: #94a3b8; }
+.kits-panel input:not([type=checkbox]), .kits-panel select {
+  width: 100%; max-width: 560px; box-sizing: border-box;
+  padding: 10px 12px; display: block;
+  background: #0b1120; color: #f8fafc; border: 1px solid #334155;
+  border-radius: 6px; font: inherit;
+}
+.kits-panel button {
+  margin: 12px 10px 8px 0; padding: 9px 14px;
+  border: 1px solid #334155; border-radius: 6px;
+  background: #2563eb; color: #f8fafc; font: inherit; font-size: 13px; cursor: pointer;
+}
+.kits-panel button:hover { background: #1d4ed8; }
+.kits-panel :focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+.kits-panel :disabled { opacity: .5; cursor: default; }
+.kits-panel .kits-checkbox { display: flex; align-items: center; gap: 8px; }
+.kits-panel .kits-error { color: #f87171; }
+.kits-panel .kits-exito { color: #4ade80; }
+.kits-panel .kits-premium { color: #fbbf24; }
+.kits-lista { list-style: none; padding: 0; }
+.kits-lista li { display: flex; flex-wrap: wrap; gap: 18px; padding: 12px 0; border-bottom: 1px solid #1e293b; }
+.kits-economia { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; padding: 18px 0; }
+.kits-economia dd { margin: 8px 0; font-weight: 700; }
