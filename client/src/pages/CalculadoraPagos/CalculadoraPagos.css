@@ -614,3 +614,14 @@
     min-width: 680px;
   }
 }
+.pagos-app .pagos-tabla-header, .pagos-app .pagos-fila { grid-template-columns: 1.4fr 1fr 1fr 1fr; font-size: 14px; }
+.pagos-app button { padding: 9px 14px; background: #2563eb; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; }
+.pagos-app button:hover { background: #1d4ed8; }
+.pagos-app button:disabled { opacity: .45; cursor: default; }
+.pagos-app .pagos-error { color: #f87171; }
+.pagos-app .pagos-exito { color: #4ade80; }
+.pagos-acciones { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+.pagos-modal { position: fixed; inset: 0; z-index: 20; max-width: 480px; width: calc(100% - 64px); margin: auto; padding: 24px; color: #f8fafc; background: #0f172a; border: 1px solid #334155; border-radius: 12px; box-shadow: 0 0 0 100vmax #090d16dd; }
+.pagos-modal p { color: #94a3b8; font-size: 14px; }
+
+.pagos-modal::backdrop { background: #090d16dd; }
