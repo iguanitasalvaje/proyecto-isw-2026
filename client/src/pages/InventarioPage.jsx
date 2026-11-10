@@ -121,6 +121,22 @@ export default function InventarioPage() {
     }
   };
 
+  // 5. Vincular / Desvincular equipo a un kit (PATCH real RF7)
+  const handleAsignarKit = async (equipoId, kitId) => {
+    try {
+      const res = await fetch(`${API_EQUIPOS_URL}/${equipoId}/kit`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kitId: kitId ? Number(kitId) : null }),
+      });
+
+      if (!res.ok) throw new Error('No se pudo actualizar la asignación del kit');
+      await cargarDatos();
+    } catch (err) {
+      alert(`⚠️ ${err.message}`);
+    }
+  };
+
   const equiposDeBaja = equipos.filter((e) => e.estado === 'Dado de Baja');
   const perdidaTotal = equiposDeBaja.reduce((total, e) => total + (Number(e.valorReposicion) || 0), 0);
 
@@ -267,6 +283,7 @@ export default function InventarioPage() {
                 <th className="py-3.5 px-5 font-semibold">Tipo</th>
                 <th className="py-3.5 px-5 font-semibold">Serie</th>
                 <th className="py-3.5 px-5 font-semibold">Estado</th>
+                <th className="py-3.5 px-5 font-semibold">Kit Asignado</th>
                 <th className="py-3.5 px-5 font-semibold">Valor Reposición</th>
                 <th className="py-3.5 px-5 font-semibold text-right">Acción</th>
               </tr>
@@ -281,6 +298,21 @@ export default function InventarioPage() {
                     <span className={`px-2.5 py-1 rounded-full text-[12px] font-semibold ${obtenerClasesBadge(item.estado)}`}>
                       {item.estado}
                     </span>
+                  </td>
+                  {/* Desplegable para seleccionar Kit (RF7) */}
+                  <td className="py-3.5 px-5">
+                    <select
+                      value={item.kitId || ''}
+                      onChange={(e) => handleAsignarKit(item.id, e.target.value)}
+                      className="bg-[#0b1120] text-[#38bdf8] border border-[#334155] rounded px-2 py-1 text-xs focus:outline-none focus:border-[#2563eb]"
+                    >
+                      <option value="">— Sin Kit —</option>
+                      {kits.map((k) => (
+                        <option key={k.id} value={k.id}>
+                          {k.nombre}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td className="py-3.5 px-5 text-[#94a3b8]">
                     ${Number(item.valorReposicion || 0).toLocaleString('es-CL')}
