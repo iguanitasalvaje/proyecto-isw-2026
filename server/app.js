@@ -1,11 +1,13 @@
 'use strict';
 const express = require('express');
 const cors = require('cors');
+const { crearKitRepository } = require('./repositories/kitRepository');
 const { crearOperacionRepository } = require('./repositories/operacionRepository');
 const { crearLiquidacionRepository } = require('./repositories/liquidacionRepository');
 
 function crearApp(pool) {
   const app = express();
+  const kits = crearKitRepository(pool);
   const operacion = crearOperacionRepository(pool);
   const liquidaciones = crearLiquidacionRepository(pool);
   app.use(cors());
@@ -47,6 +49,17 @@ function crearApp(pool) {
     const resultado = await liquidaciones.obtener(req.params.id);
     if (!resultado) return res.status(404).json({ error: 'Liquidación inexistente' });
     res.json(resultado);
+  });
+  app.get('/api/kits', async (req, res) => res.json(await kits.listarKits()));
+  app.post('/api/kits', async (req, res) => res.status(201).json(await kits.crearKit(req.body || {})));
+  app.get('/api/configuracion/premium', async (req, res) => res.json(await kits.obtenerConfiguracion()));
+  app.post('/api/configuracion/premium', async (req, res) => res.status(201).json(await kits.configurarPremium(req.body || {})));
+  app.get('/api/eventos/:id/economia', async (req, res) => res.json(await kits.obtenerDetalle(req.params.id)));
+  app.put('/api/eventos/:id/kit', async (req, res) => {
+    res.json(await kits.asignarKit({ eventoId: req.params.id, kitId: req.body?.kitId, versionEvento: version(req) }));
+  });
+  app.patch('/api/eventos/:id/precio-base', async (req, res) => {
+    res.json(await kits.actualizarPrecioBase({ eventoId: req.params.id, precioBase: req.body?.precioBase, versionEvento: version(req) }));
   });
   app.use((req, res) => res.status(404).json({ error: 'Ruta inexistente' }));
   app.use((error, req, res, next) => { // eslint-disable-line no-unused-vars

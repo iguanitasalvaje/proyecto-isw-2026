@@ -64,7 +64,7 @@ test('002 preserva registros previos y valida el nuevo esquema', async () => {
     await migrar(pool);
     await migrar(pool);
     assert.deepEqual((await pool.query('SELECT nombre FROM schema_migrations ORDER BY nombre')).rows.map(r => r.nombre),
-      ['001_rf12.sql', '002_rf12_porcentaje_individual.sql']);
+      ['001_rf12.sql', '002_rf12_porcentaje_individual.sql', '003_rf5_kit_premium.sql']);
     for (const tabla of tablas) assert.equal((await pool.query(`SELECT * FROM ${tabla}`)).rowCount, 0);
   } finally {
     await pool.end();

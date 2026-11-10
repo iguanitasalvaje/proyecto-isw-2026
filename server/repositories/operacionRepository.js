@@ -18,15 +18,16 @@ function validarCentésimas(valor) {
 
 function crearOperacionRepository(db) {
   return {
-    async crearEvento({ nombre, montoTotalEvento, cliente = null, fecha = null, lugar = null }) {
-      if (!Number.isSafeInteger(montoTotalEvento) || montoTotalEvento <= 0) throw new TypeError('Monto total inválido');
-      const { rows } = await db.query(`INSERT INTO evento(id,nombre,monto_total,cliente,fecha,lugar)
-        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`, [randomUUID(), nombre, montoTotalEvento, cliente, fecha, lugar]);
-      return { ...rows[0], monto_total: enteroSeguro(rows[0].monto_total) };
+    async crearEvento({ nombre, montoTotalEvento, precioBase = montoTotalEvento, cliente = null, fecha = null, lugar = null }) {
+      if (montoTotalEvento !== undefined && montoTotalEvento !== precioBase) throw new TypeError('El monto inicial debe coincidir con el precio base');
+      if (!Number.isSafeInteger(precioBase) || precioBase <= 0) throw new TypeError('Monto total inválido');
+      const { rows } = await db.query(`INSERT INTO evento(id,nombre,monto_total,precio_base,cliente,fecha,lugar)
+        VALUES ($1,$2,$3,$3,$4,$5,$6) RETURNING *`, [randomUUID(), nombre, precioBase, cliente, fecha, lugar]);
+      return { ...rows[0], monto_total: enteroSeguro(rows[0].monto_total), precio_base: enteroSeguro(rows[0].precio_base) };
     },
     async listarEventos() {
       const { rows } = await db.query('SELECT * FROM evento ORDER BY id');
-      return rows.map(r => ({ ...r, monto_total: enteroSeguro(r.monto_total) }));
+      return rows.map(r => ({ ...r, monto_total: enteroSeguro(r.monto_total), precio_base: enteroSeguro(r.precio_base) }));
     },
     async crearPersona({ nombre, telefono = null }) {
       return (await db.query('INSERT INTO persona(id,nombre,telefono) VALUES ($1,$2,$3) RETURNING *',
@@ -40,7 +41,7 @@ function crearOperacionRepository(db) {
     async obtenerEvento(id) {
       const r = (await db.query('SELECT * FROM evento WHERE id=$1', [id])).rows[0];
       if (!r) throw errorEstado('Evento inexistente', 404);
-      return { ...r, monto_total: enteroSeguro(r.monto_total) };
+      return { ...r, monto_total: enteroSeguro(r.monto_total), precio_base: enteroSeguro(r.precio_base) };
     },
     async crearRol({ nombre }) {
       return (await db.query('INSERT INTO rol_evento(id,nombre) VALUES ($1,$2) RETURNING *', [randomUUID(), nombre])).rows[0];
@@ -95,7 +96,12 @@ function crearOperacionRepository(db) {
     },
     async actualizarMonto({ eventoId, montoTotalEvento, versionEvento }) {
       if (!Number.isSafeInteger(montoTotalEvento) || montoTotalEvento <= 0) throw new TypeError('Monto total inválido');
-      return modificar(eventoId, versionEvento, true, tx => tx.query('UPDATE evento SET monto_total=$1 WHERE id=$2', [montoTotalEvento, eventoId]));
+      return modificar(eventoId, versionEvento, true, async tx => {
+        if ((await tx.query('SELECT 1 FROM asignacion_kit_evento WHERE evento_id=$1', [eventoId])).rowCount) {
+          throw errorEstado('El total se calcula desde el precio base y el kit. Usa actualizarPrecioBase.');
+        }
+        await tx.query('UPDATE evento SET precio_base=$1, monto_total=$1 WHERE id=$2', [montoTotalEvento, eventoId]);
+      });
     },
     async cambiarEstado({ eventoId, estado, versionEvento }) {
       if (!['pendiente', 'en_curso', 'finalizado'].includes(estado)) throw new TypeError('Estado inválido');
@@ -107,8 +113,8 @@ function crearOperacionRepository(db) {
         const actualizado = (await tx.query(`UPDATE evento SET estado=$1, version=version+1,
           finalizado_en=CASE WHEN $1='finalizado' THEN transaction_timestamp() ELSE finalizado_en END
           WHERE id=$2 RETURNING *`, [estado, eventoId])).rows[0];
-        // Integración futura: liberar kits aquí cuando exista su persistencia transaccional.
-        return { ...actualizado, monto_total: enteroSeguro(actualizado.monto_total) };
+        // La disponibilidad de personal y kits se deriva del estado, conservando sus asignaciones.
+        return { ...actualizado, monto_total: enteroSeguro(actualizado.monto_total), precio_base: enteroSeguro(actualizado.precio_base) };
       });
     },
     async listarAsignaciones(eventoId) {

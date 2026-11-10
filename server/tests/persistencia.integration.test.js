@@ -20,7 +20,7 @@ test('persistencia RF12 contra PostgreSQL real', async t => {
     const liq = crearLiquidacionRepository(pool);
     await t.test('migraciones idempotentes y base vacía', async () => {
       await migrar(pool);
-      assert.equal((await pool.query('SELECT * FROM schema_migrations')).rowCount, 2);
+      assert.equal((await pool.query('SELECT * FROM schema_migrations')).rowCount, 3);
       for (const tabla of ['evento', 'persona', 'rol_evento', 'valor_rol', 'asignacion_evento', 'liquidacion', 'detalle_liquidacion']) {
         assert.equal((await pool.query(`SELECT * FROM ${tabla}`)).rowCount, 0);
       }
