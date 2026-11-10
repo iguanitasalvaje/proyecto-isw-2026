@@ -25,24 +25,14 @@ function nombreValido(nombre) {
   return typeof nombre === 'string' && nombre.trim().length > 0;
 }
 
-// Convierte la representación decimal a centésimas sin multiplicación flotante.
-function escalarPorcentaje(porcentaje) {
-  exigir(typeof porcentaje === 'number' && Number.isFinite(porcentaje) &&
-    porcentaje >= 0 && porcentaje <= 100, 'Porcentaje fuera de rango o no numérico');
-  const partes = /^(\d+)(?:\.(\d{1,2}))?$/.exec(String(porcentaje));
-  exigir(partes, 'Porcentaje debe tener hasta dos decimales');
-  return BigInt(partes[1]) * 100n + BigInt((partes[2] || '').padEnd(2, '0'));
-}
-
-/** Función pura. Los valores por rol deben llegar seleccionados por vigencia. */
-function calcularLiquidacion({ eventoId, montoTotalEvento, personas, roles, asignaciones, valoresRol } = {}) {
+/** Función pura. Cada asignación aporta su porcentaje individual en centésimas. */
+function calcularLiquidacion({ eventoId, montoTotalEvento, personas, roles, asignaciones } = {}) {
   exigir(identificador(eventoId), 'Evento inválido');
   exigir(Number.isSafeInteger(montoTotalEvento) && montoTotalEvento > 0,
     'Monto total del evento debe ser un entero CLP seguro mayor que cero');
   const personasPorId = indexar(personas, 'Personas');
   const rolesPorId = indexar(roles, 'Roles');
   const asignacionesPorId = indexar(asignaciones, 'Asignaciones');
-  const valoresPorId = indexar(valoresRol, 'Valores de rol');
   exigir(asignacionesPorId.size > 0, 'Se requiere al menos una asignación');
 
   for (const persona of personasPorId.values()) {
@@ -52,11 +42,13 @@ function calcularLiquidacion({ eventoId, montoTotalEvento, personas, roles, asig
     exigir(nombreValido(rol.nombre), 'Nombre de rol inválido');
   }
 
-  const valoresPorRol = new Map();
-  for (const valor of valoresPorId.values()) {
-    exigir(rolesPorId.has(valor.rolId), 'Valor referencia un rol inexistente');
-    exigir(!valoresPorRol.has(valor.rolId), 'Más de un valor vigente para el mismo rol');
-    valoresPorRol.set(valor.rolId, { valor, escalado: escalarPorcentaje(valor.porcentaje) });
+  let totalCentesimas = 0;
+  for (const asignacion of asignacionesPorId.values()) {
+    const porcentaje = asignacion.porcentajeCentesimas;
+    exigir(Number.isInteger(porcentaje) && porcentaje >= 0 && porcentaje <= 10000,
+      'Porcentaje individual en centésimas debe ser entero entre 0 y 10000');
+    totalCentesimas += porcentaje;
+    exigir(totalCentesimas <= 10000, 'La suma de porcentajes no puede superar el 100%');
   }
 
   const participantes = new Set();
@@ -70,9 +62,7 @@ function calcularLiquidacion({ eventoId, montoTotalEvento, personas, roles, asig
     exigir(rol, 'Rol de asignación inexistente');
     exigir(!participantes.has(persona.id), 'Persona duplicada en el evento');
     participantes.add(persona.id);
-    const configuracion = valoresPorRol.get(rol.id);
-    exigir(configuracion, 'Rol sin porcentaje válido');
-    const pago = (BigInt(montoTotalEvento) * configuracion.escalado + 5000n) / 10000n;
+    const pago = (BigInt(montoTotalEvento) * BigInt(asignacion.porcentajeCentesimas) + 5000n) / 10000n;
     total += pago;
     exigir(total <= BigInt(Number.MAX_SAFE_INTEGER), 'Total distribuido excede el entero seguro');
     detalles.push({
@@ -81,8 +71,7 @@ function calcularLiquidacion({ eventoId, montoTotalEvento, personas, roles, asig
       nombrePersona: persona.nombre,
       rolId: rol.id,
       nombreRol: rol.nombre,
-      valorRolId: configuracion.valor.id,
-      porcentajeAplicado: configuracion.valor.porcentaje,
+      porcentajeAplicado: asignacion.porcentajeCentesimas / 100,
       montoCalculado: Number(pago),
     });
   }

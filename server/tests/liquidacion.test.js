@@ -10,8 +10,7 @@ function entrada() {
     eventoId: 'A', montoTotalEvento: 350000,
     personas: [{ id: 'p1', nombre: 'Persona de prueba 1' }, { id: 'p2', nombre: 'Persona de prueba 2' }],
     roles: [{ id: 'camara', nombre: 'Cámara' }, { id: 'sonido', nombre: 'Sonido' }],
-    asignaciones: [{ id: 'a1', eventoId: 'A', personaId: 'p1', rolId: 'camara' }],
-    valoresRol: [{ id: 'v1', rolId: 'camara', porcentaje: 10 }, { id: 'v2', rolId: 'sonido', porcentaje: 20 }],
+    asignaciones: [{ id: 'a1', eventoId: 'A', personaId: 'p1', rolId: 'camara', porcentajeCentesimas: 1000 }],
   };
 }
 
@@ -19,7 +18,7 @@ test('calcula desde el monto total y devuelve la instantánea completa', () => {
   assert.deepEqual(calcularLiquidacion(entrada()), {
     eventoId: 'A', montoTotalEvento: 350000, totalDistribuido: 35000,
     detalles: [{ asignacionId: 'a1', personaId: 'p1', nombrePersona: 'Persona de prueba 1',
-      rolId: 'camara', nombreRol: 'Cámara', valorRolId: 'v1', porcentajeAplicado: 10, montoCalculado: 35000 }],
+      rolId: 'camara', nombreRol: 'Cámara', porcentajeAplicado: 10, montoCalculado: 35000 }],
   });
 });
 
@@ -28,39 +27,39 @@ test('misma persona desempeña roles diferentes en dos eventos', () => {
   a.personas[0].cargo = 'Director';
   const b = entrada();
   b.eventoId = 'B';
-  b.asignaciones[0] = { id: 'b1', eventoId: 'B', personaId: 'p1', rolId: 'sonido' };
+  b.asignaciones[0] = { id: 'b1', eventoId: 'B', personaId: 'p1', rolId: 'sonido', porcentajeCentesimas: 2000 };
   assert.equal(calcularLiquidacion(a).totalDistribuido, 35000);
   assert.equal(calcularLiquidacion(b).totalDistribuido, 70000);
 });
 
-test('utiliza el porcentaje externo y admite dos decimales', () => {
+test('utiliza el porcentaje individual en centésimas', () => {
   const datos = entrada();
-  datos.valoresRol[0].porcentaje = 10.25;
+  datos.asignaciones[0].porcentajeCentesimas = 1025;
   assert.equal(calcularLiquidacion(datos).totalDistribuido, 35875);
-  datos.valoresRol[0].porcentaje = 12;
+  datos.asignaciones[0].porcentajeCentesimas = 1200;
   assert.equal(calcularLiquidacion(datos).totalDistribuido, 42000);
 });
 
 test('redondea cada pago al peso, con medio hacia arriba, y suma los detalles', () => {
-  for (const [monto, porcentaje, esperado] of [[1, 49.99, 0], [1, 50, 1], [1, 50.01, 1], [3, 50, 2], [10000, 0.01, 1]]) {
+  for (const [monto, porcentaje, esperado] of [[1, 4999, 0], [1, 5000, 1], [1, 5001, 1], [3, 5000, 2], [10000, 1, 1]]) {
     const datos = entrada();
     datos.montoTotalEvento = monto;
-    datos.valoresRol[0].porcentaje = porcentaje;
+    datos.asignaciones[0].porcentajeCentesimas = porcentaje;
     assert.equal(calcularLiquidacion(datos).totalDistribuido, esperado);
   }
   const datos = entrada();
   datos.montoTotalEvento = 1;
-  datos.valoresRol.forEach(v => { v.porcentaje = 50; });
-  datos.asignaciones.push({ id: 'a2', eventoId: 'A', personaId: 'p2', rolId: 'sonido' });
+  datos.asignaciones[0].porcentajeCentesimas = 5000;
+  datos.asignaciones.push({ id: 'a2', eventoId: 'A', personaId: 'p2', rolId: 'sonido', porcentajeCentesimas: 5000 });
   assert.equal(calcularLiquidacion(datos).totalDistribuido, 2);
 });
 
 test('admite extremos 0 y 100 y monto máximo seguro sin perder precisión', () => {
   const datos = entrada();
   datos.montoTotalEvento = Number.MAX_SAFE_INTEGER;
-  datos.valoresRol[0].porcentaje = 100;
+  datos.asignaciones[0].porcentajeCentesimas = 10000;
   assert.equal(calcularLiquidacion(datos).totalDistribuido, Number.MAX_SAFE_INTEGER);
-  datos.valoresRol[0].porcentaje = 0;
+  datos.asignaciones[0].porcentajeCentesimas = 0;
   assert.equal(calcularLiquidacion(datos).totalDistribuido, 0);
 });
 
@@ -71,19 +70,18 @@ test('rechaza montos inválidos', () => {
 });
 
 test('rechaza porcentajes inválidos o con precisión no admitida', () => {
-  for (const porcentaje of [-1, 101, NaN, Infinity, '10', '', null, undefined, true, 10.251, 0.1 + 0.2]) {
+  for (const porcentaje of [-1, 10001, NaN, Infinity, '1000', '', null, undefined, true, 1025.1, 0.1 + 0.2]) {
     const datos = entrada();
-    datos.valoresRol[0].porcentaje = porcentaje;
+    datos.asignaciones[0].porcentajeCentesimas = porcentaje;
     assert.throws(() => calcularLiquidacion(datos), /Porcentaje/);
   }
 });
 
-test('rechaza rol sin porcentaje y valores vigentes ambiguos', () => {
+test('rechaza una asignación sin porcentaje aunque exista una sugerencia del rol', () => {
   const datos = entrada();
-  datos.valoresRol = [];
-  assert.throws(() => calcularLiquidacion(datos), /sin porcentaje/);
-  datos.valoresRol = [...entrada().valoresRol, { id: 'v3', rolId: 'camara', porcentaje: 12 }];
-  assert.throws(() => calcularLiquidacion(datos), /Más de un valor/);
+  delete datos.asignaciones[0].porcentajeCentesimas;
+  datos.valoresRol = [{ id: 'v1', rolId: 'camara', porcentaje: 10 }];
+  assert.throws(() => calcularLiquidacion(datos), /Porcentaje individual/);
 });
 
 test('rechaza referencias inexistentes y asignaciones de otro evento', () => {
@@ -92,14 +90,12 @@ test('rechaza referencias inexistentes y asignaciones de otro evento', () => {
     datos.asignaciones[0][campo] = valor;
     assert.throws(() => calcularLiquidacion(datos), error);
   }
-  const datos = entrada();
-  datos.valoresRol[0].rolId = 'ausente';
-  assert.throws(() => calcularLiquidacion(datos), /rol inexistente/);
+
 });
 
 test('rechaza colecciones, identificadores y nombres inválidos', () => {
   assert.throws(() => calcularLiquidacion(), /Evento/);
-  for (const campo of ['personas', 'roles', 'asignaciones', 'valoresRol']) {
+  for (const campo of ['personas', 'roles', 'asignaciones']) {
     assert.throws(() => calcularLiquidacion({ ...entrada(), [campo]: null }), /arreglo/);
     const datos = entrada();
     datos[campo][0].id = '';
@@ -118,16 +114,33 @@ test('rechaza colecciones, identificadores y nombres inválidos', () => {
 test('rechaza ausencia de participantes y persona repetida en un evento', () => {
   assert.throws(() => calcularLiquidacion({ ...entrada(), asignaciones: [] }), /al menos una/);
   const datos = entrada();
-  datos.asignaciones.push({ ...datos.asignaciones[0], id: 'a2', rolId: 'sonido' });
+  datos.asignaciones.push({ ...datos.asignaciones[0], id: 'a2', rolId: 'sonido', porcentajeCentesimas: 5000 });
   assert.throws(() => calcularLiquidacion(datos), /Persona duplicada/);
 });
 
-test('rechaza desbordamiento del total distribuido', () => {
+test('admite suma inferior o igual al 100% y rechaza una centésima de exceso', () => {
   const datos = entrada();
-  datos.montoTotalEvento = Number.MAX_SAFE_INTEGER;
-  datos.valoresRol.forEach(v => { v.porcentaje = 100; });
-  datos.asignaciones.push({ id: 'a2', eventoId: 'A', personaId: 'p2', rolId: 'sonido' });
-  assert.throws(() => calcularLiquidacion(datos), /excede el entero seguro/);
+  datos.asignaciones[0].porcentajeCentesimas = 6000;
+  datos.asignaciones.push({ id: 'a2', eventoId: 'A', personaId: 'p2', rolId: 'sonido', porcentajeCentesimas: 3999 });
+  assert.equal(calcularLiquidacion(datos).totalDistribuido, 349965);
+  datos.asignaciones[1].porcentajeCentesimas = 4000;
+  assert.equal(calcularLiquidacion(datos).totalDistribuido, 350000);
+  datos.asignaciones[1].porcentajeCentesimas = 4001;
+  assert.throws(() => calcularLiquidacion(datos), /superar el 100%/);
+});
+
+test('dos trabajadores del mismo rol pueden tener porcentajes distintos', () => {
+  const datos = entrada();
+  datos.asignaciones.push({ id: 'a2', eventoId: 'A', personaId: 'p2', rolId: 'camara', porcentajeCentesimas: 1500 });
+  assert.deepEqual(calcularLiquidacion(datos).detalles.map(d => d.montoCalculado), [35000, 52500]);
+});
+
+test('cambiar la sugerencia del rol no altera el porcentaje ya asignado', () => {
+  const datos = entrada();
+  datos.valoresRol = [{ id: 'v1', rolId: 'camara', porcentaje: 10 }];
+  const resultado = calcularLiquidacion(datos);
+  datos.valoresRol[0].porcentaje = 90;
+  assert.deepEqual(calcularLiquidacion(datos), resultado);
 });
 
 test('no muta entradas y la instantánea no cambia al modificar los catálogos', () => {
@@ -137,7 +150,7 @@ test('no muta entradas y la instantánea no cambia al modificar los catálogos',
   assert.deepEqual(datos, original);
   datos.personas[0].nombre = 'Nuevo nombre';
   datos.roles[0].nombre = 'Nuevo rol';
-  datos.valoresRol[0].porcentaje = 30;
+  datos.asignaciones[0].porcentajeCentesimas = 3000;
   assert.equal(resultado.detalles[0].nombrePersona, 'Persona de prueba 1');
   assert.equal(resultado.detalles[0].nombreRol, 'Cámara');
   assert.equal(resultado.detalles[0].porcentajeAplicado, 10);
