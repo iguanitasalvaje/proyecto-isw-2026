@@ -9,7 +9,8 @@
     "db:migrate": "node db/migrate.js",
     "start": "node index.js",
     "test:migration": "node -r dotenv/config --test tests/migracion002.integration.test.js dotenv_config_quiet=true",
-    "test:http": "node -r dotenv/config --test tests/http.integration.test.js dotenv_config_quiet=true"
+    "test:http": "node -r dotenv/config --test tests/http.integration.test.js dotenv_config_quiet=true",
+    "postinstall": "prisma skills sync || exit 0"
   },
   "keywords": [],
   "author": "",
@@ -20,5 +21,8 @@
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
     "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "prisma": "8.0.0-rc.33"
   }
 }

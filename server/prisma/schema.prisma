@@ -1,0 +1,47 @@
+// server/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Kit {
+  id          Int       @id @default(autoincrement())
+  nombre      String    @db.VarChar(100)
+  descripcion String?   @db.Text
+  equipos     Equipo[]
+  logs        LogAutorizacion[]
+
+  @@map("kits")
+}
+
+model Equipo {
+  id               Int      @id @default(autoincrement())
+  nombre           String   @db.VarChar(150)
+  tipo             String   @db.VarChar(50)
+  serie            String   @unique @db.VarChar(50)
+  estado           String   @default("Disponible")
+  valorReposicion  Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  kitId            Int?
+  kit              Kit?     @relation(fields: [kitId], references: [id], onDelete: SetNull)
+
+  @@map("equipos")
+}
+
+model LogAutorizacion {
+  id             Int      @id @default(autoincrement())
+  jefeTecnico    String   @db.VarChar(100)
+  eventoId       Int
+  kitId          Int
+  kit            Kit      @relation(fields: [kitId], references: [id], onDelete: Restrict)
+  fecha          DateTime @default(now())
+
+  @@map("log_autorizaciones")
+}
