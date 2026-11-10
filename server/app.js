@@ -3,19 +3,13 @@ const express = require('express');
 const cors = require('cors');
 const { crearOperacionRepository } = require('./repositories/operacionRepository');
 const { crearLiquidacionRepository } = require('./repositories/liquidacionRepository');
-
-let crearInventarioRepository;
-try {
-  crearInventarioRepository = require('./repositories/inventarioRepository').crearInventarioRepository;
-} catch {
-  crearInventarioRepository = null;
-}
+const { crearInventarioRepository } = require('./repositories/inventarioRepository');
 
 function crearApp(pool) {
   const app = express();
   const operacion = crearOperacionRepository(pool);
   const liquidaciones = crearLiquidacionRepository(pool);
-  const inventario = crearInventarioRepository ? crearInventarioRepository(pool) : null;
+  const inventario = crearInventarioRepository(pool);
 
   app.use(cors());
   app.use(express.json({ limit: '64kb' }));
@@ -31,18 +25,56 @@ function crearApp(pool) {
     try { res.json(await operacion.listarRoles()); } catch (err) { next(err); }
   });
 
-  // Ruta del módulo de Inventario
+  // --- MÓDULO DE INVENTARIO ---
+
+  // Obtener todos los equipos
   app.get('/api/inventario/equipos', async (req, res, next) => {
     try {
-      if (inventario?.listarEquipos) {
-        return res.json(await inventario.listarEquipos());
-      }
-      const resultado = await pool.query('SELECT * FROM equipos');
-      res.json(resultado.rows);
+      res.json(await inventario.listarEquipos());
     } catch (error) {
       next(error);
     }
   });
+
+  // Obtener equipo por ID
+  app.get('/api/inventario/equipos/:equipoId', async (req, res, next) => {
+    try {
+      const equipo = await inventario.obtenerEquipoPorId(req.params.equipoId);
+      if (!equipo) return res.status(404).json({ error: 'Equipo no encontrado' });
+      res.json(equipo);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Crear un nuevo equipo
+  app.post('/api/inventario/equipos', async (req, res, next) => {
+    try {
+      const nuevoEquipo = await inventario.crearEquipo(req.body || {});
+      res.status(201).json(nuevoEquipo);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Actualizar el estado de un equipo (RF13: marcar dañados, perdidos, dados de baja)
+  app.patch('/api/inventario/equipos/:equipoId/estado', async (req, res, next) => {
+    try {
+      const { estado } = req.body || {};
+      if (!estado || typeof estado !== 'string' || !estado.trim()) {
+        return res.status(400).json({ error: 'Se requiere el nuevo estado del equipo' });
+      }
+
+      const equipoActualizado = await inventario.actualizarEstadoEquipo(req.params.equipoId, estado.trim());
+      if (!equipoActualizado) return res.status(404).json({ error: 'Equipo no encontrado' });
+
+      res.json(equipoActualizado);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // --- FIN MÓDULO DE INVENTARIO ---
 
   app.param('id', (req, res, next, id) => {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
@@ -128,9 +160,7 @@ function crearApp(pool) {
 
   app.use((req, res) => res.status(404).json({ error: 'Ruta inexistente' }));
 
-  // Middleware de manejo global de errores
   app.use((error, req, res, next) => { // eslint-disable-line no-unused-vars
-    // Imprime la falla completa en la consola de Node para depurar fácilmente
     console.error('❌ DETALLE DEL ERROR REGISTRADO:', error);
 
     let status = error.status || (error instanceof TypeError || error instanceof RangeError ? 400 : 500);

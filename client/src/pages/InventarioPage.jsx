@@ -1,23 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-// 1. Datos iniciales de prueba (Mock Data) con valor de reposición monetario (RF9 y RF13)
-const EQUIPOS_INICIALES = [
-  { id: 1, nombre: 'Sony FX3 #1', tipo: 'Cámara', serie: 'SN-FX3-001', estado: 'Disponible', kits: ['Fútbol', 'Corporativo'], valorReposicion: 3500000 },
-  { id: 2, nombre: 'Sony FX3 #2', tipo: 'Cámara', serie: 'SN-FX3-002', estado: 'En Uso', kits: ['Fútbol'], valorReposicion: 3500000 },
-  { id: 3, nombre: 'Canon C70 #1', tipo: 'Cámara', serie: 'CN-C70-001', estado: 'Disponible', kits: ['Fútbol', 'Graduación'], valorReposicion: 4000000 },
-  { id: 4, nombre: 'Trípode Manfrotto #1', tipo: 'Trípode', serie: 'MF-T100-001', estado: 'Disponible', kits: ['Fútbol', 'Graduación'], valorReposicion: 450000 },
-  { id: 5, nombre: 'Trípode Manfrotto #2', tipo: 'Trípode', serie: 'MF-T100-002', estado: 'Dañado', kits: [], valorReposicion: 450000 },
-  { id: 6, nombre: 'Cable HDMI 15m #2', tipo: 'Cable', serie: 'HDMI-15-002', estado: 'Perdido', kits: [], valorReposicion: 35000 },
-  { id: 7, nombre: 'Mezcladora Blackmagic ATEM Mini', tipo: 'Switch', serie: 'BM-AM-001', estado: 'Disponible', kits: ['Fútbol', 'Corporativo'], valorReposicion: 800000 },
-  // Equipos en historial de baja para el reporte financiero de mermas (RF13)
-  { id: 8, nombre: 'Monitor Feelworld 7"', tipo: 'Monitor', serie: 'FW-M7-002', estado: 'Dado de Baja', kits: [], valorReposicion: 250000, motivo: 'Pantalla rota en traslado' },
-  { id: 9, nombre: 'Micrófono Sennheiser XSW-D', tipo: 'Micrófono', serie: 'SN-XSD-002', estado: 'Dado de Baja', kits: [], valorReposicion: 280000, motivo: 'Pérdida en evento 15-ago' },
-];
+const API_BASE_URL = 'http://localhost:1303/api/inventario/equipos';
 
 export default function InventarioPage() {
-  // Estados para controlar las pestañas y la lista de equipos
   const [tabActiva, setTabActiva] = useState('equipos'); 
-  const [equipos, setEquipos] = useState(EQUIPOS_INICIALES);
+  const [equipos, setEquipos] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(null);
 
   // Estado para el Modal de Nuevo Equipo (RF9)
   const [mostrarModalNuevo, setMostrarModalNuevo] = useState(false);
@@ -26,34 +15,80 @@ export default function InventarioPage() {
   const [nuevaSerie, setNuevaSerie] = useState('');
   const [nuevoValor, setNuevoValor] = useState('');
 
-  // Filtrar equipos dados de baja
-  const equiposDeBaja = equipos.filter(e => e.estado === 'Dado de Baja');
-  
-  // Calcular pérdida financiera total (RF13)
-  const perdidaTotal = equiposDeBaja.reduce((total, equipo) => total + (equipo.valorReposicion || 0), 0);
-
-  // Función para procesar el guardado de un nuevo equipo en el estado reactivo
-  const handleGuardarEquipo = (e) => {
-    e.preventDefault();
-    const nuevoEquipoObj = {
-      id: Date.now(),
-      nombre: nuevoNombre,
-      tipo: nuevoTipo,
-      serie: nuevaSerie,
-      estado: 'Disponible',
-      kits: [],
-      valorReposicion: Number(nuevoValor) || 0,
-    };
-
-    setEquipos([nuevoEquipoObj, ...equipos]);
-    setMostrarModalNuevo(false);
-    
-    // Limpiar formulario
-    setNuevoNombre('');
-    setNuevaSerie('');
-    setNuevoValor('');
-    setNuevoTipo('Cámara');
+  // 1. Cargar equipos desde el backend (PostgreSQL / Neon)
+  const cargarEquipos = async () => {
+    try {
+      setCargando(true);
+      const res = await fetch(API_BASE_URL);
+      if (!res.ok) throw new Error('Error al conectar con la base de datos');
+      const data = await res.json();
+      setEquipos(data);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCargando(false);
+    }
   };
+
+  useEffect(() => {
+    cargarEquipos();
+  }, []);
+
+  // 2. Guardar un nuevo equipo en Neon (POST real)
+  const handleGuardarEquipo = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(API_BASE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: nuevoNombre,
+          tipo: nuevoTipo,
+          serie: nuevaSerie,
+          estado: 'Disponible',
+          valorReposicion: Number(nuevoValor) || 0,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'No se pudo guardar el equipo');
+      }
+
+      setMostrarModalNuevo(false);
+      setNuevoNombre('');
+      setNuevaSerie('');
+      setNuevoValor('');
+      setNuevoTipo('Cámara');
+
+      await cargarEquipos(); // Recarga la lista desde la BD
+    } catch (err) {
+      alert(`⚠️ ${err.message}`);
+    }
+  };
+
+  // 3. Cambiar estado a 'Dado de Baja' en Neon (PATCH real)
+  const handleDarDeBaja = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/${id}/estado`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'Dado de Baja' }),
+      });
+
+      if (!res.ok) throw new Error('No se pudo actualizar el estado del equipo');
+      await cargarEquipos();
+    } catch (err) {
+      alert(`⚠️ ${err.message}`);
+    }
+  };
+
+  // Filtrar equipos dados de baja
+  const equiposDeBaja = equipos.filter((e) => e.estado === 'Dado de Baja');
+  
+  // Calcular pérdida financiera total (RF13) desde datos reales
+  const perdidaTotal = equiposDeBaja.reduce((total, e) => total + (Number(e.valorReposicion) || 0), 0);
 
   const obtenerClasesBadge = (estado) => {
     switch (estado) {
@@ -73,7 +108,9 @@ export default function InventarioPage() {
       <div className="flex justify-between items-center border-b border-[#1e293b] pb-6">
         <div>
           <h1 className="text-[30px] font-[700] text-[#f8fafc] m-0 tracking-tight">Inventario</h1>
-          <p className="text-[14px] font-[400] text-[#94a3b8] mt-1.5">{equipos.length} equipos registrados · 4 kits configurados</p>
+          <p className="text-[14px] font-[400] text-[#94a3b8] mt-1.5">
+            {equipos.length} equipos registrados en la base de datos
+          </p>
         </div>
         <div className="flex gap-3">
           <button className="px-4 py-2.5 bg-[#2563eb] text-[#f8fafc] border-none rounded-lg cursor-pointer font-semibold text-[13px] hover:bg-[#1d4ed8] transition-colors">
@@ -88,30 +125,30 @@ export default function InventarioPage() {
         </div>
       </div>
 
-      {/* Tarjetas resumen */}
+      {/* Tarjetas resumen (Calculadas dinámicamente) */}
       <div className="grid grid-cols-4 gap-4 my-7">
         <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
           <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">Disponibles</span>
           <p className="text-[30px] font-bold text-[#4ade80] mt-2.5 mb-0">
-            {equipos.filter(e => e.estado === 'Disponible').length}
+            {equipos.filter((e) => e.estado === 'Disponible').length}
           </p>
         </div>
         <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
           <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">En Uso</span>
           <p className="text-[30px] font-bold text-[#3b82f6] mt-2.5 mb-0">
-            {equipos.filter(e => e.estado === 'En Uso').length}
+            {equipos.filter((e) => e.estado === 'En Uso').length}
           </p>
         </div>
         <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
           <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">Dañados</span>
           <p className="text-[30px] font-bold text-[#fbbf24] mt-2.5 mb-0">
-            {equipos.filter(e => e.estado === 'Dañado').length}
+            {equipos.filter((e) => e.estado === 'Dañado').length}
           </p>
         </div>
         <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
           <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">Perdidos</span>
           <p className="text-[30px] font-bold text-[#f87171] mt-2.5 mb-0">
-            {equipos.filter(e => e.estado === 'Perdido').length}
+            {equipos.filter((e) => e.estado === 'Perdido').length}
           </p>
         </div>
       </div>
@@ -142,8 +179,12 @@ export default function InventarioPage() {
         })}
       </div>
 
+      {/* Indicadores de carga y error */}
+      {cargando && <p className="text-[#94a3b8]">Cargando inventario desde la base de datos...</p>}
+      {error && <p className="text-[#f87171]">⚠️ Error: {error}</p>}
+
       {/* Tabla de Todos los Equipos */}
-      {tabActiva === 'equipos' && (
+      {!cargando && !error && tabActiva === 'equipos' && (
         <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl overflow-hidden">
           <table className="w-full border-collapse text-left text-[13px]">
             <thead className="bg-[#0b1120] text-[#64748b] border-b border-[#1e293b]">
@@ -152,35 +193,30 @@ export default function InventarioPage() {
                 <th className="py-3.5 px-5 font-semibold">Tipo</th>
                 <th className="py-3.5 px-5 font-semibold">Serie</th>
                 <th className="py-3.5 px-5 font-semibold">Estado</th>
-                <th className="py-3.5 px-5 font-semibold">Kits</th>
+                <th className="py-3.5 px-5 font-semibold">Valor Reposición</th>
                 <th className="py-3.5 px-5 font-semibold text-right">Acción</th>
               </tr>
             </thead>
             <tbody>
-              {equipos.filter(e => e.estado !== 'Dado de Baja').map((item) => (
+              {equipos.filter((e) => e.estado !== 'Dado de Baja').map((item) => (
                 <tr key={item.id} className="border-b border-[#1e293b] hover:bg-[#1e293b]/40 transition-colors">
                   <td className="py-3.5 px-5 font-medium text-[#f8fafc]">{item.nombre}</td>
                   <td className="py-3.5 px-5 text-[#94a3b8]">{item.tipo}</td>
-                  <td className="py-3.5 px-5 text-[#64748b] font-mono">{item.serie}</td>
+                  <td className="py-3.5 px-5 text-[#64748b] font-mono">{item.serie || 'N/A'}</td>
                   <td className="py-3.5 px-5">
                     <span className={`px-2.5 py-1 rounded-full text-[12px] font-semibold ${obtenerClasesBadge(item.estado)}`}>
                       {item.estado}
                     </span>
                   </td>
-                  <td className="py-3.5 px-5">
-                    <div className="flex gap-1.5 flex-wrap">
-                      {item.kits.length > 0 ? (
-                        item.kits.map((k, idx) => (
-                          <span key={idx} className="bg-[#0b1120] text-[#94a3b8] text-[11px] px-2 py-0.5 rounded border border-[#334155]">{k}</span>
-                        ))
-                      ) : (
-                        <span className="text-[#64748b]">—</span>
-                      )}
-                    </div>
+                  <td className="py-3.5 px-5 text-[#94a3b8]">
+                    ${Number(item.valorReposicion || 0).toLocaleString('es-CL')}
                   </td>
                   <td className="py-3.5 px-5 text-right">
-                    {(item.estado === 'Dañado' || item.estado === 'Perdido') && (
-                      <button className="px-3 py-1.5 text-[12px] font-semibold text-[#f87171] bg-[#f87171]/10 border border-[#f87171]/30 rounded-md cursor-pointer hover:bg-[#f87171]/20 transition-colors">
+                    {item.estado !== 'Dado de Baja' && (
+                      <button 
+                        onClick={() => handleDarDeBaja(item.id)}
+                        className="px-3 py-1.5 text-[12px] font-semibold text-[#f87171] bg-[#f87171]/10 border border-[#f87171]/30 rounded-md cursor-pointer hover:bg-[#f87171]/20 transition-colors"
+                      >
                         Dar de baja
                       </button>
                     )}
@@ -193,7 +229,7 @@ export default function InventarioPage() {
       )}
 
       {/* Vista Dados de Baja (RF13 - Consolidado Financiero de Mermas) */}
-      {tabActiva === 'bajas' && (
+      {!cargando && !error && tabActiva === 'bajas' && (
         <div className="space-y-6">
           {equiposDeBaja.length > 0 && (
              <div className="bg-[#f87171]/10 border border-[#f87171]/30 rounded-xl p-6 flex justify-between items-center">
@@ -221,7 +257,6 @@ export default function InventarioPage() {
                   <tr>
                     <th className="py-3.5 px-5 font-semibold">Equipo Desincorporado</th>
                     <th className="py-3.5 px-5 font-semibold">Serie</th>
-                    <th className="py-3.5 px-5 font-semibold">Motivo de Baja</th>
                     <th className="py-3.5 px-5 font-semibold text-right">Valor de Reposición</th>
                   </tr>
                 </thead>
@@ -231,10 +266,9 @@ export default function InventarioPage() {
                       <td className="py-3.5 px-5 font-medium text-[#f8fafc] line-through decoration-[#64748b]">
                         {item.nombre} <span className="text-[#94a3b8] no-underline ml-2">({item.tipo})</span>
                       </td>
-                      <td className="py-3.5 px-5 text-[#64748b] font-mono">{item.serie}</td>
-                      <td className="py-3.5 px-5 text-[#94a3b8] italic">"{item.motivo}"</td>
+                      <td className="py-3.5 px-5 text-[#64748b] font-mono">{item.serie || 'N/A'}</td>
                       <td className="py-3.5 px-5 text-right font-bold text-[#f87171]">
-                        ${item.valorReposicion?.toLocaleString('es-CL') || 0}
+                        ${Number(item.valorReposicion || 0).toLocaleString('es-CL')}
                       </td>
                     </tr>
                   ))}
