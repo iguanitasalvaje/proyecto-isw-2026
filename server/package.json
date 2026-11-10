@@ -1,26 +1,16 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend API para proyecto ISW",
   "main": "index.js",
   "scripts": {
-    "test": "node --test tests/liquidacion.test.js tests/recargoPremium.test.js",
-    "test:integration": "node -r dotenv/config --test tests/persistencia.integration.test.js dotenv_config_quiet=true",
-    "db:migrate": "node db/migrate.js",
     "start": "node index.js",
-    "test:migration": "node -r dotenv/config --test tests/migracion002.integration.test.js dotenv_config_quiet=true",
-    "test:http": "node -r dotenv/config --test tests/http.integration.test.js dotenv_config_quiet=true",
-    "test:rf5:integration": "node -r dotenv/config --test tests/rf5.integration.test.js dotenv_config_quiet=true",
-    "test:rf5:http": "node -r dotenv/config --test tests/rf5.http.test.js dotenv_config_quiet=true"
+    "dev": "node --watch index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "cors": "^2.8.6",
-    "dotenv": "^18.0.4",
-    "express": "^5.2.1",
-    "pg": "^8.23.1"
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pg": "^8.11.5"
   }
 }
