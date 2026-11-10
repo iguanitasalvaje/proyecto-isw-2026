@@ -234,7 +234,7 @@ export default function InventarioPage() {
       {cargando && <p className="text-[#94a3b8]">Sincronizando con PostgreSQL (Neon)...</p>}
       {error && <p className="text-[#f87171]">⚠️ Error de conexión: {error}</p>}
 
-      {/* Vista de Kits (RF7 y gestión dev) */}
+      {/* Vista de Kits */}
       {!cargando && !error && tabActiva === 'kits' && (
         <div className="space-y-6">
           {kits.length > 0 ? (

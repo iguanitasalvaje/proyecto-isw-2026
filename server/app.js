@@ -30,7 +30,7 @@ function crearApp(pool) {
     try { res.json(await operacion.listarRoles()); } catch (err) { next(err); }
   });
 
-  // --- MÓDULO DE INVENTARIO (Tu Rama - RF7 / RF9 / RF13) ---
+  // --- MÓDULO DE INVENTARIO (RF7 / RF9 / RF13) ---
 
   // Obtener todos los equipos
   app.get('/api/inventario/equipos', async (req, res, next) => {
