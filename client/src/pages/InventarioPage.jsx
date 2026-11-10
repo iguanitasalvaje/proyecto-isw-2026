@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import KitsPanel from '../components/kits/KitsPanel';
 
 const API_EQUIPOS_URL = 'http://localhost:1303/api/inventario/equipos';
 const API_KITS_URL = 'http://localhost:1303/api/inventario/kits';
@@ -22,7 +23,7 @@ export default function InventarioPage() {
   const [nombreKit, setNombreKit] = useState('');
   const [descripcionKit, setDescripcionKit] = useState('');
 
-  // 1. Cargar datos desde la base de datos (Neon)
+  // 1. Cargar datos desde la base de datos (Neon / PostgreSQL)
   const cargarDatos = async () => {
     try {
       setCargando(true);
@@ -52,7 +53,7 @@ export default function InventarioPage() {
     cargarDatos();
   }, []);
 
-  // 2. Guardar un nuevo equipo en Neon (POST real)
+  // 2. Guardar un nuevo equipo en el Backend (POST real RF9)
   const handleGuardarEquipo = async (e) => {
     e.preventDefault();
     try {
@@ -81,7 +82,7 @@ export default function InventarioPage() {
     }
   };
 
-  // 3. Guardar un nuevo Kit en Neon (POST real)
+  // 3. Guardar un nuevo Kit en el Backend (POST real RF7)
   const handleGuardarKit = async (e) => {
     e.preventDefault();
     try {
@@ -105,7 +106,7 @@ export default function InventarioPage() {
     }
   };
 
-  // 4. Cambiar estado a 'Dado de Baja' en Neon (PATCH real)
+  // 4. Cambiar estado a 'Dado de Baja' en Backend (PATCH real RF13)
   const handleDarDeBaja = async (id) => {
     try {
       const res = await fetch(`${API_EQUIPOS_URL}/${id}/estado`, {
@@ -231,44 +232,46 @@ export default function InventarioPage() {
       </div>
 
       {cargando && <p className="text-[#94a3b8]">Sincronizando con PostgreSQL (Neon)...</p>}
-      {error && <p className="text-[#f87171]">⚠️ Error: {error}</p>}
+      {error && <p className="text-[#f87171]">⚠️ Error de conexión: {error}</p>}
 
-      {/* Vista de Kits (RF7) */}
+      {/* Vista de Kits (RF7 y gestión dev) */}
       {!cargando && !error && tabActiva === 'kits' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {kits.length === 0 ? (
-            <div className="col-span-full bg-[#0f172a] border border-[#1e293b] rounded-xl p-12 text-center text-[#94a3b8]">
-              No hay kits registrados. Haz clic en <strong>+ Nuevo Kit</strong> para crear el primero.
-            </div>
-          ) : (
-            kits.map((kit) => (
-              <div key={kit.id} className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5 hover:border-[#2563eb]/50 transition-colors">
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className="font-bold text-[16px] text-[#f8fafc] m-0">{kit.nombre}</h3>
-                  <span className="text-[11px] bg-[#1e293b] text-[#38bdf8] px-2 py-0.5 rounded border border-[#334155]">
-                    {kit.equipos ? kit.equipos.length : 0} equipos
-                  </span>
-                </div>
-                <p className="text-[13px] text-[#94a3b8] mb-4 min-h-[38px] line-clamp-2">
-                  {kit.descripcion || 'Sin descripción asignada.'}
-                </p>
-                
-                <div className="border-t border-[#1e293b] pt-3 mt-2">
-                  <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block mb-2">Equipos incluidos:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {kit.equipos && kit.equipos.length > 0 ? (
-                      kit.equipos.map((eq) => (
-                        <span key={eq.id} className="bg-[#0b1120] text-[#cbd5e1] text-[11px] px-2 py-1 rounded border border-[#334155]">
-                          {eq.nombre}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-[12px] text-[#64748b] italic">Sin equipos vinculados</span>
-                    )}
+        <div className="space-y-6">
+          {kits.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {kits.map((kit) => (
+                <div key={kit.id} className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5 hover:border-[#2563eb]/50 transition-colors">
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="font-bold text-[16px] text-[#f8fafc] m-0">{kit.nombre}</h3>
+                    <span className="text-[11px] bg-[#1e293b] text-[#38bdf8] px-2 py-0.5 rounded border border-[#334155]">
+                      {kit.equipos ? kit.equipos.length : 0} equipos
+                    </span>
+                  </div>
+                  <p className="text-[13px] text-[#94a3b8] mb-4 min-h-[38px] line-clamp-2">
+                    {kit.descripcion || 'Sin descripción asignada.'}
+                  </p>
+                  
+                  <div className="border-t border-[#1e293b] pt-3 mt-2">
+                    <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block mb-2">Equipos incluidos:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {kit.equipos && kit.equipos.length > 0 ? (
+                        kit.equipos.map((eq) => (
+                          <span key={eq.id} className="bg-[#0b1120] text-[#cbd5e1] text-[11px] px-2 py-1 rounded border border-[#334155]">
+                            {eq.nombre}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[12px] text-[#64748b] italic">Sin equipos vinculados</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
+          ) : (
+            <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-6">
+              <KitsPanel />
+            </div>
           )}
         </div>
       )}
@@ -332,7 +335,7 @@ export default function InventarioPage() {
         </div>
       )}
 
-      {/* Vista Dados de Baja (RF13) */}
+      {/* Vista Dados de Baja (RF13 - Consolidado Financiero de Mermas) */}
       {!cargando && !error && tabActiva === 'bajas' && (
         <div className="space-y-6">
           {equiposDeBaja.length > 0 && (
@@ -361,6 +364,7 @@ export default function InventarioPage() {
                   <tr>
                     <th className="py-3.5 px-5 font-semibold">Equipo Desincorporado</th>
                     <th className="py-3.5 px-5 font-semibold">Serie</th>
+                    <th className="py-3.5 px-5 font-semibold">Motivo de Baja</th>
                     <th className="py-3.5 px-5 font-semibold text-right">Valor de Reposición</th>
                   </tr>
                 </thead>
@@ -371,6 +375,7 @@ export default function InventarioPage() {
                         {item.nombre} <span className="text-[#94a3b8] no-underline ml-2">({item.tipo})</span>
                       </td>
                       <td className="py-3.5 px-5 text-[#64748b] font-mono">{item.serie || 'N/A'}</td>
+                      <td className="py-3.5 px-5 text-[#94a3b8] italic">{item.motivo ? `"${item.motivo}"` : '—'}</td>
                       <td className="py-3.5 px-5 text-right font-bold text-[#f87171]">
                         ${Number(item.valorReposicion || 0).toLocaleString('es-CL')}
                       </td>
