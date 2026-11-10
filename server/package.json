@@ -5,8 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "node --test tests/liquidacion.test.js",
-    "test:integration": "node --test tests/persistencia.integration.test.js",
-    "db:migrate": "node db/migrate.js"
+    "test:integration": "node -r dotenv/config --test tests/persistencia.integration.test.js dotenv_config_quiet=true",
+    "db:migrate": "node db/migrate.js",
+    "start": "node index.js",
+    "test:migration": "node -r dotenv/config --test tests/migracion002.integration.test.js dotenv_config_quiet=true",
+    "test:http": "node -r dotenv/config --test tests/http.integration.test.js dotenv_config_quiet=true"
   },
   "keywords": [],
   "author": "",
