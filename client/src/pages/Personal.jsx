@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const Personal = () => {
+const Personal = ({ eventosProp, setEventosProp }) => {
   // Lista inicial de personal disponible (RF4)
   const [trabajadoresDisponibles, setTrabajadoresDisponibles] = useState([
     {
@@ -42,22 +42,12 @@ const Personal = () => {
   ]);
 
   // Eventos agendados
-  const [eventos, setEventos] = useState([
-    {
-      id: 1,
-      nombre: 'Lanzamiento Producto Falabella',
-      fecha: '05 sept 2025',
-      lugar: 'Hotel W Santiago',
-      personalAsignado: [],
-    },
-    {
-      id: 2,
-      nombre: 'Final Copa Chile Sub-17',
-      fecha: '30 ago 2025',
-      lugar: 'Estadio Monumental',
-      personalAsignado: [],
-    },
-  ]);
+// Usar los eventos props si existen, de lo contrario mantener fallback local
+const eventos = eventosProp || [
+  { id: 1, nombre: 'Lanzamiento Producto Falabella', fecha: '05 sept 2025', lugar: 'Hotel W Santiago', personalAsignado: [] },
+  { id: 2, nombre: 'Final Copa Chile Sub-17', fecha: '30 ago 2025', lugar: 'Estadio Monumental', personalAsignado: [] },
+];
+const setEventos = setEventosProp || (() => {});
 
   // Estados para Modal de Agregar Personal
   const [mostrarModalAgregar, setMostrarModalAgregar] = useState(false);
