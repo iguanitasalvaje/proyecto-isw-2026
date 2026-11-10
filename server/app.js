@@ -1,12 +1,14 @@
 'use strict';
 const express = require('express');
 const cors = require('cors');
+const { crearKitRepository } = require('./repositories/kitRepository');
 const { crearOperacionRepository } = require('./repositories/operacionRepository');
 const { crearLiquidacionRepository } = require('./repositories/liquidacionRepository');
 const { crearInventarioRepository } = require('./repositories/inventarioRepository');
 
 function crearApp(pool) {
   const app = express();
+  const kits = crearKitRepository(pool);
   const operacion = crearOperacionRepository(pool);
   const liquidaciones = crearLiquidacionRepository(pool);
   const inventario = crearInventarioRepository(pool);
@@ -15,17 +17,20 @@ function crearApp(pool) {
   app.use(express.json({ limit: '64kb' }));
 
   app.get('/api', (req, res) => res.json({ status: 'ok', mensaje: 'Servidor del proyecto funcionando correctamente' }));
+
   app.get('/api/eventos', async (req, res, next) => {
     try { res.json(await operacion.listarEventos()); } catch (err) { next(err); }
   });
+
   app.get('/api/personas', async (req, res, next) => {
     try { res.json(await operacion.listarPersonas()); } catch (err) { next(err); }
   });
+
   app.get('/api/roles', async (req, res, next) => {
     try { res.json(await operacion.listarRoles()); } catch (err) { next(err); }
   });
 
-  // --- MÓDULO DE INVENTARIO ---
+  // --- MÓDULO DE INVENTARIO (Tu Rama - RF7 / RF9 / RF13) ---
 
   // Obtener todos los equipos
   app.get('/api/inventario/equipos', async (req, res, next) => {
@@ -189,6 +194,46 @@ function crearApp(pool) {
       next(err);
     }
   });
+
+  // --- MÓDULO DE KITS Y ECONOMÍA (Rama Dev - RF5) ---
+
+  app.get('/api/kits', async (req, res, next) => {
+    try { res.json(await kits.listarKits()); } catch (err) { next(err); }
+  });
+
+  app.post('/api/kits', async (req, res, next) => {
+    try { res.status(201).json(await kits.crearKit(req.body || {})); } catch (err) { next(err); }
+  });
+
+  app.get('/api/configuracion/premium', async (req, res, next) => {
+    try { res.json(await kits.obtenerConfiguracion()); } catch (err) { next(err); }
+  });
+
+  app.post('/api/configuracion/premium', async (req, res, next) => {
+    try { res.status(201).json(await kits.configurarPremium(req.body || {})); } catch (err) { next(err); }
+  });
+
+  app.get('/api/eventos/:id/economia', async (req, res, next) => {
+    try { res.json(await kits.obtenerDetalle(req.params.id)); } catch (err) { next(err); }
+  });
+
+  app.put('/api/eventos/:id/kit', async (req, res, next) => {
+    try {
+      res.json(await kits.asignarKit({ eventoId: req.params.id, kitId: req.body?.kitId, versionEvento: version(req) }));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.patch('/api/eventos/:id/precio-base', async (req, res, next) => {
+    try {
+      res.json(await kits.actualizarPrecioBase({ eventoId: req.params.id, precioBase: req.body?.precioBase, versionEvento: version(req) }));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // --- FIN MÓDULO DE KITS Y ECONOMÍA ---
 
   app.use((req, res) => res.status(404).json({ error: 'Ruta inexistente' }));
 
