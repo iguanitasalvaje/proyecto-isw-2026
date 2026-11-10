@@ -43,7 +43,7 @@ instantánea de nombres, rol, porcentaje e importe.
 Los repositorios exigen `finalizado` para previsualizar y guardar. La transición
 es `pendiente -> en_curso -> finalizado`, sin reapertura. Al finalizar se congelan
 monto, trabajadores y roles. La disponibilidad se deriva de asignaciones a eventos
-no finalizados, conservando el historial. Kits queda como integración pendiente.
+no finalizados, conservando el historial. RF5 aplica el mismo criterio a los kits.
 
 El porcentaje se puede ajustar hasta guardar la única liquidación final. Las
 mutaciones bloquean el evento en una transacción e incrementan `evento.version`.
