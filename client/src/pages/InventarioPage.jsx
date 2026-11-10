@@ -1,28 +1,45 @@
 import React, { useState, useEffect } from 'react';
 
-const API_BASE_URL = 'http://localhost:1303/api/inventario/equipos';
+const API_EQUIPOS_URL = 'http://localhost:1303/api/inventario/equipos';
+const API_KITS_URL = 'http://localhost:1303/api/inventario/kits';
 
 export default function InventarioPage() {
   const [tabActiva, setTabActiva] = useState('equipos'); 
   const [equipos, setEquipos] = useState([]);
+  const [kits, setKits] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
 
-  // Estado para el Modal de Nuevo Equipo (RF9)
-  const [mostrarModalNuevo, setMostrarModalNuevo] = useState(false);
+  // Estados para Modal Nuevo Equipo (RF9)
+  const [mostrarModalEquipo, setMostrarModalEquipo] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [nuevoTipo, setNuevoTipo] = useState('Cámara');
   const [nuevaSerie, setNuevaSerie] = useState('');
   const [nuevoValor, setNuevoValor] = useState('');
 
-  // 1. Cargar equipos desde el backend (PostgreSQL / Neon)
-  const cargarEquipos = async () => {
+  // Estados para Modal Nuevo Kit (RF7)
+  const [mostrarModalKit, setMostrarModalKit] = useState(false);
+  const [nombreKit, setNombreKit] = useState('');
+  const [descripcionKit, setDescripcionKit] = useState('');
+
+  // 1. Cargar datos desde la base de datos (Neon)
+  const cargarDatos = async () => {
     try {
       setCargando(true);
-      const res = await fetch(API_BASE_URL);
-      if (!res.ok) throw new Error('Error al conectar con la base de datos');
-      const data = await res.json();
-      setEquipos(data);
+      const [resEquipos, resKits] = await Promise.all([
+        fetch(API_EQUIPOS_URL),
+        fetch(API_KITS_URL)
+      ]);
+
+      if (!resEquipos.ok || !resKits.ok) {
+        throw new Error('Error al sincronizar con la base de datos');
+      }
+
+      const dataEquipos = await resEquipos.json();
+      const dataKits = await resKits.json();
+
+      setEquipos(dataEquipos);
+      setKits(dataKits);
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -32,14 +49,14 @@ export default function InventarioPage() {
   };
 
   useEffect(() => {
-    cargarEquipos();
+    cargarDatos();
   }, []);
 
   // 2. Guardar un nuevo equipo en Neon (POST real)
   const handleGuardarEquipo = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(API_BASE_URL, {
+      const res = await fetch(API_EQUIPOS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -51,43 +68,60 @@ export default function InventarioPage() {
         }),
       });
 
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'No se pudo guardar el equipo');
-      }
+      if (!res.ok) throw new Error('Error al guardar el equipo');
 
-      setMostrarModalNuevo(false);
+      setMostrarModalEquipo(false);
       setNuevoNombre('');
       setNuevaSerie('');
       setNuevoValor('');
       setNuevoTipo('Cámara');
-
-      await cargarEquipos(); // Recarga la lista desde la BD
+      await cargarDatos();
     } catch (err) {
       alert(`⚠️ ${err.message}`);
     }
   };
 
-  // 3. Cambiar estado a 'Dado de Baja' en Neon (PATCH real)
+  // 3. Guardar un nuevo Kit en Neon (POST real)
+  const handleGuardarKit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(API_KITS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: nombreKit,
+          descripcion: descripcionKit,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Error al registrar el kit');
+
+      setMostrarModalKit(false);
+      setNombreKit('');
+      setDescripcionKit('');
+      await cargarDatos();
+    } catch (err) {
+      alert(`⚠️ ${err.message}`);
+    }
+  };
+
+  // 4. Cambiar estado a 'Dado de Baja' en Neon (PATCH real)
   const handleDarDeBaja = async (id) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/${id}/estado`, {
+      const res = await fetch(`${API_EQUIPOS_URL}/${id}/estado`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ estado: 'Dado de Baja' }),
       });
 
-      if (!res.ok) throw new Error('No se pudo actualizar el estado del equipo');
-      await cargarEquipos();
+      if (!res.ok) throw new Error('No se pudo dar de baja el equipo');
+      await cargarDatos();
     } catch (err) {
       alert(`⚠️ ${err.message}`);
     }
   };
 
-  // Filtrar equipos dados de baja
   const equiposDeBaja = equipos.filter((e) => e.estado === 'Dado de Baja');
-  
-  // Calcular pérdida financiera total (RF13) desde datos reales
   const perdidaTotal = equiposDeBaja.reduce((total, e) => total + (Number(e.valorReposicion) || 0), 0);
 
   const obtenerClasesBadge = (estado) => {
@@ -109,15 +143,18 @@ export default function InventarioPage() {
         <div>
           <h1 className="text-[30px] font-[700] text-[#f8fafc] m-0 tracking-tight">Inventario</h1>
           <p className="text-[14px] font-[400] text-[#94a3b8] mt-1.5">
-            {equipos.length} equipos registrados en la base de datos
+            {equipos.length} equipos registrados · {kits.length} kits configurados
           </p>
         </div>
         <div className="flex gap-3">
-          <button className="px-4 py-2.5 bg-[#2563eb] text-[#f8fafc] border-none rounded-lg cursor-pointer font-semibold text-[13px] hover:bg-[#1d4ed8] transition-colors">
+          <button 
+            onClick={() => setMostrarModalKit(true)}
+            className="px-4 py-2.5 bg-[#2563eb] text-[#f8fafc] border-none rounded-lg cursor-pointer font-semibold text-[13px] hover:bg-[#1d4ed8] transition-colors"
+          >
             + Nuevo Kit
           </button>
           <button 
-            onClick={() => setMostrarModalNuevo(true)}
+            onClick={() => setMostrarModalEquipo(true)}
             className="px-4 py-2.5 bg-[#0f172a] text-[#f8fafc] border border-[#334155] rounded-lg cursor-pointer font-semibold text-[13px] hover:bg-[#1e293b] transition-colors"
           >
             + Nuevo Equipo
@@ -125,7 +162,7 @@ export default function InventarioPage() {
         </div>
       </div>
 
-      {/* Tarjetas resumen (Calculadas dinámicamente) */}
+      {/* Tarjetas resumen de métricas */}
       <div className="grid grid-cols-4 gap-4 my-7">
         <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
           <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">Disponibles</span>
@@ -153,7 +190,7 @@ export default function InventarioPage() {
         </div>
       </div>
 
-      {/* Subnavegación de Tabs */}
+      {/* Navegación por pestañas */}
       <div className="flex gap-2 mb-5">
         {[
           { id: 'kits', label: 'Kits' },
@@ -162,7 +199,6 @@ export default function InventarioPage() {
         ].map((tab) => {
           const activo = tabActiva === tab.id;
           let clasesTab = 'px-4 py-2 rounded-lg text-[13px] font-semibold cursor-pointer transition-colors border ';
-          
           if (activo) {
             clasesTab += tab.id === 'bajas' 
               ? 'bg-[#f87171]/20 text-[#f87171] border-[#f87171]' 
@@ -170,7 +206,6 @@ export default function InventarioPage() {
           } else {
             clasesTab += 'bg-[#0f172a] text-[#94a3b8] border-transparent hover:text-[#f8fafc]';
           }
-
           return (
             <button key={tab.id} onClick={() => setTabActiva(tab.id)} className={clasesTab}>
               {tab.label}
@@ -179,9 +214,48 @@ export default function InventarioPage() {
         })}
       </div>
 
-      {/* Indicadores de carga y error */}
-      {cargando && <p className="text-[#94a3b8]">Cargando inventario desde la base de datos...</p>}
+      {cargando && <p className="text-[#94a3b8]">Sincronizando con PostgreSQL (Neon)...</p>}
       {error && <p className="text-[#f87171]">⚠️ Error: {error}</p>}
+
+      {/* Vista de Kits (RF7) */}
+      {!cargando && !error && tabActiva === 'kits' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {kits.length === 0 ? (
+            <div className="col-span-full bg-[#0f172a] border border-[#1e293b] rounded-xl p-12 text-center text-[#94a3b8]">
+              No hay kits registrados. Haz clic en <strong>+ Nuevo Kit</strong> para crear el primero.
+            </div>
+          ) : (
+            kits.map((kit) => (
+              <div key={kit.id} className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5 hover:border-[#2563eb]/50 transition-colors">
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="font-bold text-[16px] text-[#f8fafc] m-0">{kit.nombre}</h3>
+                  <span className="text-[11px] bg-[#1e293b] text-[#38bdf8] px-2 py-0.5 rounded border border-[#334155]">
+                    {kit.equipos ? kit.equipos.length : 0} equipos
+                  </span>
+                </div>
+                <p className="text-[13px] text-[#94a3b8] mb-4 min-h-[38px] line-clamp-2">
+                  {kit.descripcion || 'Sin descripción asignada.'}
+                </p>
+                
+                <div className="border-t border-[#1e293b] pt-3 mt-2">
+                  <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block mb-2">Equipos incluidos:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {kit.equipos && kit.equipos.length > 0 ? (
+                      kit.equipos.map((eq) => (
+                        <span key={eq.id} className="bg-[#0b1120] text-[#cbd5e1] text-[11px] px-2 py-1 rounded border border-[#334155]">
+                          {eq.nombre}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[12px] text-[#64748b] italic">Sin equipos vinculados</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Tabla de Todos los Equipos */}
       {!cargando && !error && tabActiva === 'equipos' && (
@@ -212,14 +286,12 @@ export default function InventarioPage() {
                     ${Number(item.valorReposicion || 0).toLocaleString('es-CL')}
                   </td>
                   <td className="py-3.5 px-5 text-right">
-                    {item.estado !== 'Dado de Baja' && (
-                      <button 
-                        onClick={() => handleDarDeBaja(item.id)}
-                        className="px-3 py-1.5 text-[12px] font-semibold text-[#f87171] bg-[#f87171]/10 border border-[#f87171]/30 rounded-md cursor-pointer hover:bg-[#f87171]/20 transition-colors"
-                      >
-                        Dar de baja
-                      </button>
-                    )}
+                    <button 
+                      onClick={() => handleDarDeBaja(item.id)}
+                      className="px-3 py-1.5 text-[12px] font-semibold text-[#f87171] bg-[#f87171]/10 border border-[#f87171]/30 rounded-md cursor-pointer hover:bg-[#f87171]/20 transition-colors"
+                    >
+                      Dar de baja
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -228,7 +300,7 @@ export default function InventarioPage() {
         </div>
       )}
 
-      {/* Vista Dados de Baja (RF13 - Consolidado Financiero de Mermas) */}
+      {/* Vista Dados de Baja (RF13) */}
       {!cargando && !error && tabActiva === 'bajas' && (
         <div className="space-y-6">
           {equiposDeBaja.length > 0 && (
@@ -279,46 +351,71 @@ export default function InventarioPage() {
         </div>
       )}
 
-      {/* Vista Kits */}
-      {tabActiva === 'kits' && (
-        <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-10 text-center text-[#64748b] text-[14px]">
-          Configuración y asignación de Kits lógicos (en construcción).
+      {/* Modal interactivo de Nuevo Kit (RF7) */}
+      {mostrarModalKit && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl w-full max-w-md p-6 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-[#1e293b] pb-4 mb-4">
+              <h3 className="text-lg font-bold text-[#f8fafc] m-0">Crear Nuevo Kit Lógico</h3>
+              <button onClick={() => setMostrarModalKit(false)} className="text-[#64748b] hover:text-[#f8fafc] bg-transparent border-none text-lg cursor-pointer">✕</button>
+            </div>
+            <form onSubmit={handleGuardarKit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Nombre del Kit</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={nombreKit} 
+                  onChange={(e) => setNombreKit(e.target.value)} 
+                  placeholder="Ej. Kit Transmisión Fútbol" 
+                  className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Descripción</label>
+                <textarea 
+                  rows="3" 
+                  value={descripcionKit} 
+                  onChange={(e) => setDescripcionKit(e.target.value)} 
+                  placeholder="Detalle de los requerimientos de este kit..." 
+                  className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]" 
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#1e293b]">
+                <button type="button" onClick={() => setMostrarModalKit(false)} className="px-4 py-2 bg-[#1e293b] text-[#94a3b8] rounded-lg text-xs font-semibold border border-transparent">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-[#2563eb] text-[#f8fafc] rounded-lg text-xs font-semibold border-none cursor-pointer hover:bg-[#1d4ed8]">Guardar Kit</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
       {/* Modal interactivo de Registro de Nuevo Equipo (RF9) */}
-      {mostrarModalNuevo && (
+      {mostrarModalEquipo && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl w-full max-w-md p-6 shadow-2xl">
             <div className="flex justify-between items-center border-b border-[#1e293b] pb-4 mb-4">
               <h3 className="text-lg font-bold text-[#f8fafc] m-0">Registrar Nuevo Equipo</h3>
-              <button 
-                onClick={() => setMostrarModalNuevo(false)}
-                className="text-[#64748b] hover:text-[#f8fafc] bg-transparent border-none text-lg cursor-pointer"
-              >
-                ✕
-              </button>
+              <button onClick={() => setMostrarModalEquipo(false)} className="text-[#64748b] hover:text-[#f8fafc] bg-transparent border-none text-lg cursor-pointer">✕</button>
             </div>
-
             <form onSubmit={handleGuardarEquipo} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Nombre del Equipo</label>
                 <input 
                   type="text" 
                   required 
-                  value={nuevoNombre}
-                  onChange={(e) => setNuevoNombre(e.target.value)}
+                  value={nuevoNombre} 
+                  onChange={(e) => setNuevoNombre(e.target.value)} 
                   placeholder="Ej. Cámara Sony A7IV" 
                   className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]" 
                 />
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Categoría/Tipo</label>
                   <select 
-                    value={nuevoTipo}
-                    onChange={(e) => setNuevoTipo(e.target.value)}
+                    value={nuevoTipo} 
+                    onChange={(e) => setNuevoTipo(e.target.value)} 
                     className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]"
                   >
                     <option>Cámara</option>
@@ -334,40 +431,27 @@ export default function InventarioPage() {
                   <input 
                     type="text" 
                     required 
-                    value={nuevaSerie}
-                    onChange={(e) => setNuevaSerie(e.target.value)}
+                    value={nuevaSerie} 
+                    onChange={(e) => setNuevaSerie(e.target.value)} 
                     placeholder="SN-000-XXX" 
                     className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]" 
                   />
                 </div>
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Valor de Reposición (CLP)</label>
                 <input 
                   type="number" 
                   required 
-                  value={nuevoValor}
-                  onChange={(e) => setNuevoValor(e.target.value)}
+                  value={nuevoValor} 
+                  onChange={(e) => setNuevoValor(e.target.value)} 
                   placeholder="1500000" 
                   className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]" 
                 />
               </div>
-
               <div className="flex justify-end gap-3 pt-4 border-t border-[#1e293b]">
-                <button 
-                  type="button" 
-                  onClick={() => setMostrarModalNuevo(false)}
-                  className="px-4 py-2 bg-[#1e293b] text-[#94a3b8] rounded-lg text-xs font-semibold hover:text-[#f8fafc] transition-colors border border-transparent"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-4 py-2 bg-[#2563eb] text-[#f8fafc] rounded-lg text-xs font-semibold hover:bg-[#1d4ed8] transition-colors border-none cursor-pointer"
-                >
-                  Guardar Equipo
-                </button>
+                <button type="button" onClick={() => setMostrarModalEquipo(false)} className="px-4 py-2 bg-[#1e293b] text-[#94a3b8] rounded-lg text-xs font-semibold border border-transparent">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-[#2563eb] text-[#f8fafc] rounded-lg text-xs font-semibold border-none cursor-pointer hover:bg-[#1d4ed8]">Guardar Equipo</button>
               </div>
             </form>
           </div>

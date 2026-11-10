@@ -47,7 +47,7 @@ function crearApp(pool) {
     }
   });
 
-  // Crear un nuevo equipo
+  // Crear un nuevo equipo (RF9)
   app.post('/api/inventario/equipos', async (req, res, next) => {
     try {
       const nuevoEquipo = await inventario.crearEquipo(req.body || {});
@@ -66,6 +66,38 @@ function crearApp(pool) {
       }
 
       const equipoActualizado = await inventario.actualizarEstadoEquipo(req.params.equipoId, estado.trim());
+      if (!equipoActualizado) return res.status(404).json({ error: 'Equipo no encontrado' });
+
+      res.json(equipoActualizado);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Obtener todos los kits con sus equipos (RF7)
+  app.get('/api/inventario/kits', async (req, res, next) => {
+    try {
+      res.json(await inventario.listarKits());
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Crear un nuevo kit (RF7)
+  app.post('/api/inventario/kits', async (req, res, next) => {
+    try {
+      const nuevoKit = await inventario.crearKit(req.body || {});
+      res.status(201).json(nuevoKit);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Asignar o desasignar un equipo a un kit (RF7)
+  app.patch('/api/inventario/equipos/:equipoId/kit', async (req, res, next) => {
+    try {
+      const { kitId } = req.body || {};
+      const equipoActualizado = await inventario.asignarEquipoAKit(req.params.equipoId, kitId || null);
       if (!equipoActualizado) return res.status(404).json({ error: 'Equipo no encontrado' });
 
       res.json(equipoActualizado);

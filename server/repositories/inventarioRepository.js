@@ -10,6 +10,66 @@ function crearInventarioRepository(pool) {
       return rows;
     },
 
+   /**
+     * Lista los kits junto con sus equipos asociados
+     */
+    async listarKits() {
+      const query = `
+        SELECT 
+          k.id, 
+          k.nombre, 
+          k.descripcion,
+          COALESCE(
+            JSON_AGG(
+              JSON_BUILD_OBJECT(
+                'id', e.id, 
+                'nombre', e.nombre, 
+                'tipo', e.tipo, 
+                'estado', e.estado
+              )
+            ) FILTER (WHERE e.id IS NOT NULL), '[]'
+          ) AS equipos
+        FROM kits k
+        LEFT JOIN equipos e ON e."kitId" = k.id
+        GROUP BY k.id
+        ORDER BY k.id ASC;
+      `;
+      const { rows } = await pool.query(query);
+      return rows;
+    },
+
+    /**
+     * Crear un nuevo Kit lógico
+     */
+    async crearKit({ nombre, descripcion }) {
+      if (!nombre || typeof nombre !== 'string' || !nombre.trim()) {
+        const err = new TypeError('El nombre del kit es obligatorio');
+        err.status = 400;
+        throw err;
+      }
+      const query = `
+        INSERT INTO kits (nombre, descripcion, "updatedAt")
+        VALUES ($1, $2, NOW())
+        RETURNING *
+      `;
+      const { rows } = await pool.query(query, [nombre.trim(), descripcion ? descripcion.trim() : null]);
+      return rows[0];
+    },
+
+    /**
+     * Asignar o desasignar un equipo a un kit
+     */
+    async asignarEquipoAKit(equipoId, kitId) {
+      const query = `
+        UPDATE equipos
+        SET "kitId" = $1, "updatedAt" = NOW()
+        WHERE id = $2
+        RETURNING *
+      `;
+      const { rows } = await pool.query(query, [kitId, equipoId]);
+      return rows[0] || null;
+    },
+
     /**
      * Obtiene un equipo por su ID
      */
