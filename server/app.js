@@ -21,9 +21,65 @@ function crearApp(pool) {
   app.get('/api/eventos', async (req, res, next) => {
     try { res.json(await operacion.listarEventos()); } catch (err) { next(err); }
   });
+  // --- CREACIÓN / AGENDAMIENTO DE TRANSMISIONES (RF2) ---
+  app.post('/api/eventos', async (req, res, next) => {
+    try {
+      const { nombre, cliente, precioBase, fecha, lugar } = req.body || {};
+
+      // 1. Validaciones requeridas por el RF2
+      if (!nombre || typeof nombre !== 'string' || !nombre.trim()) {
+        return res.status(400).json({ error: 'El nombre del evento es obligatorio' });
+      }
+
+      const precio = Number(precioBase);
+      if (!Number.isSafeInteger(precio) || precio <= 0) {
+        return res.status(400).json({ error: 'El precio base debe ser un monto numérico mayor a cero (RF2)' });
+      }
+
+      // 2. Guardar en Neon PostgreSQL mediante el repositorio existente
+      const nuevoEvento = await operacion.crearEvento({
+        nombre: nombre.trim(),
+        cliente: cliente ? cliente.trim() : null,
+        precioBase: precio,
+        montoTotalEvento: precio,
+        fecha: fecha ? new Date(fecha).toISOString() : null,
+        lugar: lugar ? lugar.trim() : null,
+        estado: 'pendiente' // Postcondición del RF2: Guardado con estado inicial "Agendado/Pendiente"
+      });
+
+      res.status(201).json(nuevoEvento);
+    } catch (err) {
+      next(err);
+    }
+  });
 
   app.get('/api/personas', async (req, res, next) => {
     try { res.json(await operacion.listarPersonas()); } catch (err) { next(err); }
+  });
+    // --- CREAR NUEVO INTEGRANTE DE PERSONAL (RF4) ---
+  app.post('/api/personas', async (req, res, next) => {
+    try {
+      const { nombre, telefono } = req.body || {};
+
+      // 1. Validaciones requeridas por el RF4
+      if (!nombre || typeof nombre !== 'string' || !nombre.trim()) {
+        return res.status(400).json({ error: 'El nombre del trabajador es obligatorio' });
+      }
+
+      if (!telefono || typeof telefono !== 'string' || !telefono.trim()) {
+        return res.status(400).json({ error: 'El teléfono de contacto es obligatorio (RF4)' });
+      }
+
+      // 2. Guardar en Neon PostgreSQL mediante operacionRepository
+      const nuevaPersona = await operacion.crearPersona({
+        nombre: nombre.trim(),
+        telefono: telefono.trim(),
+      });
+
+      res.status(201).json(nuevaPersona);
+    } catch (err) {
+      next(err);
+    }
   });
 
   app.get('/api/roles', async (req, res, next) => {
