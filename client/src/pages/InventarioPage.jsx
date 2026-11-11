@@ -1,16 +1,12 @@
 ﻿import { useState, useEffect } from 'react';
 import KitsPanel from '../components/kits/KitsPanel';
-
-const API_EQUIPOS_URL = '/api/inventario/equipos';
-const API_KITS_URL = '/api/inventario/kits';
+import { api } from '../services/api';
 
 async function consultarInventario(signal) {
-  const [resEquipos, resKits] = await Promise.all([
-    fetch(API_EQUIPOS_URL, { signal }),
-    fetch(API_KITS_URL, { signal }),
+  const [equipos, kits] = await Promise.all([
+    api('/inventario/equipos', { signal }),
+    api('/kits', { signal }),
   ]);
-  if (!resEquipos.ok || !resKits.ok) throw new Error('Error al cargar el inventario');
-  const [equipos, kits] = await Promise.all([resEquipos.json(), resKits.json()]);
   return { equipos, kits };
 }
 
@@ -24,7 +20,7 @@ export default function InventarioPage() {
   // Estados para Modal Nuevo Equipo (RF9)
   const [mostrarModalEquipo, setMostrarModalEquipo] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState('');
-  const [nuevoTipo, setNuevoTipo] = useState('CÃ¡mara');
+  const [nuevoTipo, setNuevoTipo] = useState('Cámara');
   const [nuevaSerie, setNuevaSerie] = useState('');
   const [nuevoValor, setNuevoValor] = useState('');
 
@@ -33,7 +29,7 @@ export default function InventarioPage() {
   const [nombreKit, setNombreKit] = useState('');
   const [descripcionKit, setDescripcionKit] = useState('');
 
-  // 1. Cargar datos desde la base de datos (Neon / PostgreSQL)
+  // 1. Cargar datos desde la base de datos (PostgreSQL)
   const cargarDatos = async () => {
     try {
       setCargandoInventario(true);
@@ -70,28 +66,25 @@ export default function InventarioPage() {
   const handleGuardarEquipo = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(API_EQUIPOS_URL, {
+      await api('/inventario/equipos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           nombre: nuevoNombre,
           tipo: nuevoTipo,
           serie: nuevaSerie,
           estado: 'Disponible',
           valorReposicion: Number(nuevoValor) || 0,
-        }),
+        },
       });
-
-      if (!res.ok) throw new Error('Error al guardar el equipo');
 
       setMostrarModalEquipo(false);
       setNuevoNombre('');
       setNuevaSerie('');
       setNuevoValor('');
-      setNuevoTipo('CÃ¡mara');
+      setNuevoTipo('Cámara');
       await cargarDatos();
     } catch (err) {
-      alert(`âš ï¸ ${err.message}`);
+      alert(`⚠️ ${err.message}`);
     }
   };
 
@@ -99,55 +92,48 @@ export default function InventarioPage() {
   const handleGuardarKit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(API_KITS_URL, {
+      await api('/kits', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           nombre: nombreKit,
           descripcion: descripcionKit,
-        }),
+        },
       });
-
-      if (!res.ok) throw new Error('Error al registrar el kit');
 
       setMostrarModalKit(false);
       setNombreKit('');
       setDescripcionKit('');
       await cargarDatos();
     } catch (err) {
-      alert(`âš ï¸ ${err.message}`);
+      alert(`⚠️ ${err.message}`);
     }
   };
 
   // 4. Cambiar estado a 'Dado de Baja' en Backend (PATCH real RF13)
   const handleDarDeBaja = async (id) => {
     try {
-      const res = await fetch(`${API_EQUIPOS_URL}/${id}/estado`, {
+      await api(`/inventario/equipos/${id}/estado`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estado: 'Dado de Baja' }),
+        body: { estado: 'Dado de Baja' },
       });
 
-      if (!res.ok) throw new Error('No se pudo dar de baja el equipo');
       await cargarDatos();
     } catch (err) {
-      alert(`âš ï¸ ${err.message}`);
+      alert(`⚠️ ${err.message}`);
     }
   };
 
   // 5. Vincular / Desvincular equipo a un kit (PATCH real RF7)
   const handleAsignarKit = async (equipoId, kitId) => {
     try {
-      const res = await fetch(`${API_EQUIPOS_URL}/${equipoId}/kit`, {
+      await api(`/inventario/equipos/${equipoId}/kit`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kitId: kitId ? Number(kitId) : null }),
+        body: { kitId: kitId ? Number(kitId) : null },
       });
 
-      if (!res.ok) throw new Error('No se pudo actualizar la asignaciÃ³n del kit');
       await cargarDatos();
     } catch (err) {
-      alert(`âš ï¸ ${err.message}`);
+      alert(`⚠️ ${err.message}`);
     }
   };
 
@@ -158,7 +144,7 @@ export default function InventarioPage() {
     switch (estado) {
       case 'Disponible': return 'text-[#4ade80] bg-[#4ade80]/10 border border-[#4ade80]/25';
       case 'En Uso': return 'text-[#3b82f6] bg-[#3b82f6]/10 border border-[#3b82f6]/25';
-      case 'DaÃ±ado': return 'text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/25';
+      case 'Dañado': return 'text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/25';
       case 'Perdido': return 'text-[#f87171] bg-[#f87171]/10 border border-[#f87171]/25';
       case 'Dado de Baja': return 'text-[#64748b] bg-[#1e293b] border border-[#334155]';
       default: return 'text-[#94a3b8] bg-[#1e293b]';
@@ -173,7 +159,7 @@ export default function InventarioPage() {
         <div>
           <h1 className="text-[30px] font-[700] text-[#f8fafc] m-0 tracking-tight">Inventario</h1>
           <p className="text-[14px] font-[400] text-[#94a3b8] mt-1.5">
-            {equipos.length} equipos registrados Â· {kits.length} kits configurados
+            {equipos.length} equipos registrados · {kits.length} kits configurados
           </p>
         </div>
         <div className="flex gap-3">
@@ -192,7 +178,7 @@ export default function InventarioPage() {
         </div>
       </div>
 
-      {/* Tarjetas resumen de mÃ©tricas */}
+      {/* Tarjetas resumen de métricas */}
       <div className="grid grid-cols-4 gap-4 my-7">
         <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
           <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">Disponibles</span>
@@ -207,9 +193,9 @@ export default function InventarioPage() {
           </p>
         </div>
         <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
-          <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">DaÃ±ados</span>
+          <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">Dañados</span>
           <p className="text-[30px] font-bold text-[#fbbf24] mt-2.5 mb-0">
-            {equipos.filter((e) => e.estado === 'DaÃ±ado').length}
+            {equipos.filter((e) => e.estado === 'Dañado').length}
           </p>
         </div>
         <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
@@ -220,11 +206,11 @@ export default function InventarioPage() {
         </div>
       </div>
 
-      {/* NavegaciÃ³n por pestaÃ±as */}
+      {/* Navegación por pestañas */}
       <div className="flex gap-2 mb-5">
         {[
-          { id: 'kits', label: 'Kits de equipos â€” Inventario' },
-          { id: 'kits-eventos', label: 'Kits para eventos â€” RF5' },
+          { id: 'kits', label: 'Kits de equipos — Inventario' },
+          { id: 'kits-eventos', label: 'Kits para eventos — RF5' },
           { id: 'equipos', label: 'Todos los Equipos' },
           { id: 'bajas', label: 'Dados de Baja' },
         ].map((tab) => {
@@ -245,8 +231,8 @@ export default function InventarioPage() {
         })}
       </div>
 
-      {tabActiva !== 'kits-eventos' && cargandoInventario && <p className="text-[#94a3b8]">Sincronizando con PostgreSQL (Neon)...</p>}
-      {tabActiva !== 'kits-eventos' && errorInventario && <p role="alert" className="text-[#f87171]">âš ï¸ Error de conexiÃ³n: {errorInventario}</p>}
+      {tabActiva !== 'kits-eventos' && cargandoInventario && <p className="text-[#94a3b8]">Sincronizando con PostgreSQL...</p>}
+      {tabActiva !== 'kits-eventos' && errorInventario && <p role="alert" className="text-[#f87171]">⚠️ Error de conexión: {errorInventario}</p>}
 
       {/* Vista de Kits */}
       {!cargandoInventario && !errorInventario && tabActiva === 'kits' && (
@@ -262,7 +248,7 @@ export default function InventarioPage() {
                     </span>
                   </div>
                   <p className="text-[13px] text-[#94a3b8] mb-4 min-h-[38px] line-clamp-2">
-                    {kit.descripcion || 'Sin descripciÃ³n asignada.'}
+                    {kit.descripcion || 'Sin descripción asignada.'}
                   </p>
 
                   <div className="border-t border-[#1e293b] pt-3 mt-2">
@@ -303,8 +289,8 @@ export default function InventarioPage() {
                 <th className="py-3.5 px-5 font-semibold">Serie</th>
                 <th className="py-3.5 px-5 font-semibold">Estado</th>
                 <th className="py-3.5 px-5 font-semibold">Kit Asignado</th>
-                <th className="py-3.5 px-5 font-semibold">Valor ReposiciÃ³n</th>
-                <th className="py-3.5 px-5 font-semibold text-right">AcciÃ³n</th>
+                <th className="py-3.5 px-5 font-semibold">Valor Reposición</th>
+                <th className="py-3.5 px-5 font-semibold text-right">Acción</th>
               </tr>
             </thead>
             <tbody>
@@ -325,7 +311,7 @@ export default function InventarioPage() {
                       onChange={(e) => handleAsignarKit(item.id, e.target.value)}
                       className="bg-[#0b1120] text-[#38bdf8] border border-[#334155] rounded px-2 py-1 text-xs focus:outline-none focus:border-[#2563eb]"
                     >
-                      <option value="">â€” Sin Kit â€”</option>
+                      <option value="">— Sin Kit —</option>
                       {kits.map((k) => (
                         <option key={k.id} value={k.id}>
                           {k.nombre}
@@ -357,8 +343,8 @@ export default function InventarioPage() {
           {equiposDeBaja.length > 0 && (
              <div className="bg-[#f87171]/10 border border-[#f87171]/30 rounded-xl p-6 flex justify-between items-center">
                <div>
-                 <h2 className="text-[#f87171] font-bold text-[18px] mb-1">Mermas y PÃ©rdidas Financieras</h2>
-                 <p className="text-[#94a3b8] text-[13px] m-0">Resumen de impacto econÃ³mico por equipos dados de baja en el perÃ­odo actual.</p>
+                 <h2 className="text-[#f87171] font-bold text-[18px] mb-1">Mermas y Pérdidas Financieras</h2>
+                 <p className="text-[#94a3b8] text-[13px] m-0">Resumen de impacto económico por equipos dados de baja en el período actual.</p>
                </div>
                <div className="text-right">
                  <span className="text-[11px] uppercase text-[#f87171]/80 font-bold tracking-wider">Impacto Total</span>
@@ -369,9 +355,9 @@ export default function InventarioPage() {
 
           {equiposDeBaja.length === 0 ? (
             <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-16 text-center">
-              <div className="w-12 h-12 rounded-full bg-[#1e293b] text-[#94a3b8] flex items-center justify-center mx-auto mb-4 text-xl">âœ“</div>
+              <div className="w-12 h-12 rounded-full bg-[#1e293b] text-[#94a3b8] flex items-center justify-center mx-auto mb-4 text-xl">✓</div>
               <h3 className="text-[16px] font-semibold text-[#f8fafc] m-0">Sin equipos dados de baja</h3>
-              <p className="text-[13px] text-[#94a3b8] mt-1.5">Los equipos eliminados del inventario aparecerÃ¡n aquÃ­.</p>
+              <p className="text-[13px] text-[#94a3b8] mt-1.5">Los equipos eliminados del inventario aparecerán aquí.</p>
             </div>
           ) : (
             <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl overflow-hidden">
@@ -381,7 +367,7 @@ export default function InventarioPage() {
                     <th className="py-3.5 px-5 font-semibold">Equipo Desincorporado</th>
                     <th className="py-3.5 px-5 font-semibold">Serie</th>
                     <th className="py-3.5 px-5 font-semibold">Motivo de Baja</th>
-                    <th className="py-3.5 px-5 font-semibold text-right">Valor de ReposiciÃ³n</th>
+                    <th className="py-3.5 px-5 font-semibold text-right">Valor de Reposición</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -391,7 +377,7 @@ export default function InventarioPage() {
                         {item.nombre} <span className="text-[#94a3b8] no-underline ml-2">({item.tipo})</span>
                       </td>
                       <td className="py-3.5 px-5 text-[#64748b] font-mono">{item.serie || 'N/A'}</td>
-                      <td className="py-3.5 px-5 text-[#94a3b8] italic">{item.motivo ? `"${item.motivo}"` : 'â€”'}</td>
+                      <td className="py-3.5 px-5 text-[#94a3b8] italic">{item.motivo ? `"${item.motivo}"` : '—'}</td>
                       <td className="py-3.5 px-5 text-right font-bold text-[#f87171]">
                         ${Number(item.valorReposicion || 0).toLocaleString('es-CL')}
                       </td>
@@ -409,8 +395,8 @@ export default function InventarioPage() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl w-full max-w-md p-6 shadow-2xl">
             <div className="flex justify-between items-center border-b border-[#1e293b] pb-4 mb-4">
-              <h3 className="text-lg font-bold text-[#f8fafc] m-0">Crear kit de equipos â€” Inventario</h3>
-              <button onClick={() => setMostrarModalKit(false)} className="text-[#64748b] hover:text-[#f8fafc] bg-transparent border-none text-lg cursor-pointer">âœ•</button>
+              <h3 className="text-lg font-bold text-[#f8fafc] m-0">Crear kit de equipos — Inventario</h3>
+              <button onClick={() => setMostrarModalKit(false)} className="text-[#64748b] hover:text-[#f8fafc] bg-transparent border-none text-lg cursor-pointer">✕</button>
             </div>
             <form onSubmit={handleGuardarKit} className="space-y-4">
               <div>
@@ -421,12 +407,12 @@ export default function InventarioPage() {
                   id="nombre-kit-inventario"
                   value={nombreKit}
                   onChange={(e) => setNombreKit(e.target.value)}
-                  placeholder="Ej. Kit TransmisiÃ³n FÃºtbol"
+                  placeholder="Ej. Kit Transmisión Fútbol"
                   className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]"
                 />
               </div>
               <div>
-                <label htmlFor="descripcion-kit-inventario" className="block text-xs font-semibold text-[#94a3b8] mb-1">DescripciÃ³n</label>
+                <label htmlFor="descripcion-kit-inventario" className="block text-xs font-semibold text-[#94a3b8] mb-1">Descripción</label>
                 <textarea
                   rows="3"
                   id="descripcion-kit-inventario"
@@ -451,7 +437,7 @@ export default function InventarioPage() {
           <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl w-full max-w-md p-6 shadow-2xl">
             <div className="flex justify-between items-center border-b border-[#1e293b] pb-4 mb-4">
               <h3 className="text-lg font-bold text-[#f8fafc] m-0">Registrar Nuevo Equipo</h3>
-              <button onClick={() => setMostrarModalEquipo(false)} className="text-[#64748b] hover:text-[#f8fafc] bg-transparent border-none text-lg cursor-pointer">âœ•</button>
+              <button onClick={() => setMostrarModalEquipo(false)} className="text-[#64748b] hover:text-[#f8fafc] bg-transparent border-none text-lg cursor-pointer">✕</button>
             </div>
             <form onSubmit={handleGuardarEquipo} className="space-y-4">
               <div>
@@ -461,20 +447,20 @@ export default function InventarioPage() {
                   required
                   value={nuevoNombre}
                   onChange={(e) => setNuevoNombre(e.target.value)}
-                  placeholder="Ej. CÃ¡mara Sony A7IV"
+                  placeholder="Ej. Cámara Sony A7IV"
                   className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#94a3b8] mb-1">CategorÃ­a/Tipo</label>
+                  <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Categoría/Tipo</label>
                   <select
                     value={nuevoTipo}
                     onChange={(e) => setNuevoTipo(e.target.value)}
                     className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]"
                   >
-                    <option>CÃ¡mara</option>
-                    <option>TrÃ­pode</option>
+                    <option>Cámara</option>
+                    <option>Trípode</option>
                     <option>Cable</option>
                     <option>Monitor</option>
                     <option>Audio</option>
@@ -482,7 +468,7 @@ export default function InventarioPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#94a3b8] mb-1">NÃºmero de Serie</label>
+                  <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Número de Serie</label>
                   <input
                     type="text"
                     required
@@ -494,7 +480,7 @@ export default function InventarioPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Valor de ReposiciÃ³n (CLP)</label>
+                <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Valor de Reposición (CLP)</label>
                 <input
                   type="number"
                   required
