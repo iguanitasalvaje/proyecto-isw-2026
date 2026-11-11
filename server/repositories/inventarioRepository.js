@@ -1,5 +1,21 @@
 'use strict';
 
+function texto(valor, campo, maximo) {
+  if (typeof valor !== 'string' || !valor.trim()) throw new TypeError(`${campo} es obligatorio`);
+  const limpio = valor.trim();
+  if (maximo && [...limpio].length > maximo) throw new TypeError(`${campo} supera ${maximo} caracteres`);
+  return limpio;
+}
+
+function identificador(valor) {
+  if (typeof valor !== 'number' && (typeof valor !== 'string' || !/^[0-9]+$/.test(valor))) {
+    throw new TypeError('Identificador de Inventario inválido');
+  }
+  const id = Number(valor);
+  if (!Number.isInteger(id) || id <= 0 || id > 2147483647) throw new TypeError('Identificador de Inventario inválido');
+  return id;
+}
+
 function crearInventarioRepository(pool) {
   return {
     /**
@@ -42,14 +58,13 @@ function crearInventarioRepository(pool) {
      * Crear un nuevo Kit lógico
      */
     async crearKit({ nombre, descripcion }) {
-      if (!nombre || typeof nombre !== 'string' || !nombre.trim()) {
-        const err = new TypeError('El nombre del kit es obligatorio');
-        err.status = 400;
-        throw err;
+      nombre = texto(nombre, 'Nombre del kit', 100);
+      if (descripcion !== undefined && descripcion !== null && typeof descripcion !== 'string') {
+        throw new TypeError('Descripción inválida');
       }
       const query = `
-        INSERT INTO kits (nombre, descripcion, "updatedAt")
-        VALUES ($1, $2, NOW())
+        INSERT INTO kits (nombre, descripcion)
+        VALUES ($1, $2)
         RETURNING *
       `;
       const { rows } = await pool.query(query, [nombre.trim(), descripcion ? descripcion.trim() : null]);
@@ -60,6 +75,8 @@ function crearInventarioRepository(pool) {
      * Asignar o desasignar un equipo a un kit
      */
     async asignarEquipoAKit(equipoId, kitId) {
+      equipoId = identificador(equipoId);
+      if (kitId !== null) kitId = identificador(kitId);
       const query = `
         UPDATE equipos
         SET "kitId" = $1, "updatedAt" = NOW()
@@ -74,6 +91,7 @@ function crearInventarioRepository(pool) {
      * Obtiene un equipo por su ID
      */
     async obtenerEquipoPorId(id) {
+      id = identificador(id);
       const { rows } = await pool.query('SELECT * FROM equipos WHERE id = $1', [id]);
       return rows[0] || null;
     },
@@ -82,20 +100,13 @@ function crearInventarioRepository(pool) {
      * Registra un nuevo equipo en el inventario
      */
     async crearEquipo({ nombre, tipo, serie, estado = 'Disponible', valorReposicion }) {
-      if (!nombre || typeof nombre !== 'string' || !nombre.trim()) {
-        const err = new TypeError('El nombre del equipo es obligatorio');
-        err.status = 400;
-        throw err;
-      }
-      if (!tipo || typeof tipo !== 'string' || !tipo.trim()) {
-        const err = new TypeError('El tipo de equipo es obligatorio');
-        err.status = 400;
-        throw err;
-      }
-      if (valorReposicion === undefined || valorReposicion === null || Number(valorReposicion) < 0) {
-        const err = new TypeError('El valor de reposición debe ser un número mayor o igual a 0');
-        err.status = 400;
-        throw err;
+      nombre = texto(nombre, 'Nombre del equipo', 150);
+      tipo = texto(tipo, 'Tipo del equipo', 50);
+      serie = texto(serie, 'Serie del equipo', 50);
+      estado = texto(estado, 'Estado del equipo');
+      if ((typeof valorReposicion !== 'number' && typeof valorReposicion !== 'string') ||
+        String(valorReposicion).trim() === '' || !Number.isFinite(Number(valorReposicion)) || Number(valorReposicion) < 0) {
+        throw new TypeError('El valor de reposición debe ser un número finito mayor o igual a cero');
       }
 
       const query = `
@@ -106,7 +117,7 @@ function crearInventarioRepository(pool) {
       const values = [
         nombre.trim(),
         tipo.trim(),
-        serie ? serie.trim() : null,
+        serie,
         estado.trim(),
         Number(valorReposicion)
       ];
@@ -119,6 +130,8 @@ function crearInventarioRepository(pool) {
      * Actualiza el estado de un equipo (Disponible, En Uso, Dañado, Perdido, Dado de Baja)
      */
     async actualizarEstadoEquipo(id, estado) {
+      id = identificador(id);
+      estado = texto(estado, 'Estado del equipo');
       const query = `
         UPDATE equipos
         SET estado = $1, "updatedAt" = NOW()
