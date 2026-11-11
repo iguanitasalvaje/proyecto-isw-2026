@@ -1,15 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import KitsPanel from '../components/kits/KitsPanel';
 
 const API_EQUIPOS_URL = 'http://localhost:1303/api/inventario/equipos';
 const API_KITS_URL = 'http://localhost:1303/api/inventario/kits';
 
+async function consultarInventario(signal) {
+  const [resEquipos, resKits] = await Promise.all([
+    fetch(API_EQUIPOS_URL, { signal }),
+    fetch(API_KITS_URL, { signal }),
+  ]);
+  if (!resEquipos.ok || !resKits.ok) throw new Error('Error al cargar el inventario');
+  const [equipos, kits] = await Promise.all([resEquipos.json(), resKits.json()]);
+  return { equipos, kits };
+}
+
 export default function InventarioPage() {
   const [tabActiva, setTabActiva] = useState('equipos'); 
   const [equipos, setEquipos] = useState([]);
   const [kits, setKits] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState(null);
+  const [cargandoInventario, setCargandoInventario] = useState(true);
+  const [errorInventario, setErrorInventario] = useState(null);
 
   // Estados para Modal Nuevo Equipo (RF9)
   const [mostrarModalEquipo, setMostrarModalEquipo] = useState(false);
@@ -26,31 +36,34 @@ export default function InventarioPage() {
   // 1. Cargar datos desde la base de datos (Neon / PostgreSQL)
   const cargarDatos = async () => {
     try {
-      setCargando(true);
-      const [resEquipos, resKits] = await Promise.all([
-        fetch(API_EQUIPOS_URL),
-        fetch(API_KITS_URL)
-      ]);
-
-      if (!resEquipos.ok || !resKits.ok) {
-        throw new Error('Error al sincronizar con la base de datos');
-      }
-
-      const dataEquipos = await resEquipos.json();
-      const dataKits = await resKits.json();
+      setCargandoInventario(true);
+      const { equipos: dataEquipos, kits: dataKits } = await consultarInventario();
 
       setEquipos(dataEquipos);
       setKits(dataKits);
-      setError(null);
+      setErrorInventario(null);
     } catch (err) {
-      setError(err.message);
+      setErrorInventario(err.message);
     } finally {
-      setCargando(false);
+      setCargandoInventario(false);
     }
   };
 
   useEffect(() => {
-    cargarDatos();
+    const controller = new AbortController();
+    consultarInventario(controller.signal)
+      .then(({ equipos, kits }) => {
+        setEquipos(equipos);
+        setKits(kits);
+        setErrorInventario(null);
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') setErrorInventario(err.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCargandoInventario(false);
+      });
+    return () => controller.abort();
   }, []);
 
   // 2. Guardar un nuevo equipo en el Backend (POST real RF9)
@@ -165,10 +178,10 @@ export default function InventarioPage() {
         </div>
         <div className="flex gap-3">
           <button 
-            onClick={() => setMostrarModalKit(true)}
+            onClick={() => { setTabActiva('kits'); setMostrarModalKit(true); }}
             className="px-4 py-2.5 bg-[#2563eb] text-[#f8fafc] border-none rounded-lg cursor-pointer font-semibold text-[13px] hover:bg-[#1d4ed8] transition-colors"
           >
-            + Nuevo Kit
+            + Nuevo Kit de equipos
           </button>
           <button 
             onClick={() => setMostrarModalEquipo(true)}
@@ -210,7 +223,8 @@ export default function InventarioPage() {
       {/* Navegación por pestañas */}
       <div className="flex gap-2 mb-5">
         {[
-          { id: 'kits', label: 'Kits' },
+          { id: 'kits', label: 'Kits de equipos — Inventario' },
+          { id: 'kits-eventos', label: 'Kits para eventos — RF5' },
           { id: 'equipos', label: 'Todos los Equipos' },
           { id: 'bajas', label: 'Dados de Baja' },
         ].map((tab) => {
@@ -231,11 +245,11 @@ export default function InventarioPage() {
         })}
       </div>
 
-      {cargando && <p className="text-[#94a3b8]">Sincronizando con PostgreSQL (Neon)...</p>}
-      {error && <p className="text-[#f87171]">⚠️ Error de conexión: {error}</p>}
+      {tabActiva !== 'kits-eventos' && cargandoInventario && <p className="text-[#94a3b8]">Sincronizando con PostgreSQL (Neon)...</p>}
+      {tabActiva !== 'kits-eventos' && errorInventario && <p role="alert" className="text-[#f87171]">⚠️ Error de conexión: {errorInventario}</p>}
 
       {/* Vista de Kits */}
-      {!cargando && !error && tabActiva === 'kits' && (
+      {!cargandoInventario && !errorInventario && tabActiva === 'kits' && (
         <div className="space-y-6">
           {kits.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -269,15 +283,17 @@ export default function InventarioPage() {
               ))}
             </div>
           ) : (
-            <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-6">
-              <KitsPanel />
+            <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-6 text-[#94a3b8]">
+              No hay kits de equipos registrados en Inventario.
             </div>
           )}
         </div>
       )}
 
+      {tabActiva === 'kits-eventos' && <KitsPanel />}
+
       {/* Tabla de Todos los Equipos */}
-      {!cargando && !error && tabActiva === 'equipos' && (
+      {!cargandoInventario && !errorInventario && tabActiva === 'equipos' && (
         <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl overflow-hidden">
           <table className="w-full border-collapse text-left text-[13px]">
             <thead className="bg-[#0b1120] text-[#64748b] border-b border-[#1e293b]">
@@ -336,7 +352,7 @@ export default function InventarioPage() {
       )}
 
       {/* Vista Dados de Baja (RF13 - Consolidado Financiero de Mermas) */}
-      {!cargando && !error && tabActiva === 'bajas' && (
+      {!cargandoInventario && !errorInventario && tabActiva === 'bajas' && (
         <div className="space-y-6">
           {equiposDeBaja.length > 0 && (
              <div className="bg-[#f87171]/10 border border-[#f87171]/30 rounded-xl p-6 flex justify-between items-center">
@@ -393,15 +409,16 @@ export default function InventarioPage() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl w-full max-w-md p-6 shadow-2xl">
             <div className="flex justify-between items-center border-b border-[#1e293b] pb-4 mb-4">
-              <h3 className="text-lg font-bold text-[#f8fafc] m-0">Crear Nuevo Kit Lógico</h3>
+              <h3 className="text-lg font-bold text-[#f8fafc] m-0">Crear kit de equipos — Inventario</h3>
               <button onClick={() => setMostrarModalKit(false)} className="text-[#64748b] hover:text-[#f8fafc] bg-transparent border-none text-lg cursor-pointer">✕</button>
             </div>
             <form onSubmit={handleGuardarKit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Nombre del Kit</label>
+                <label htmlFor="nombre-kit-inventario" className="block text-xs font-semibold text-[#94a3b8] mb-1">Nombre del kit de equipos</label>
                 <input 
                   type="text" 
                   required 
+                  id="nombre-kit-inventario"
                   value={nombreKit} 
                   onChange={(e) => setNombreKit(e.target.value)} 
                   placeholder="Ej. Kit Transmisión Fútbol" 
@@ -409,9 +426,10 @@ export default function InventarioPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Descripción</label>
+                <label htmlFor="descripcion-kit-inventario" className="block text-xs font-semibold text-[#94a3b8] mb-1">Descripción</label>
                 <textarea 
                   rows="3" 
+                  id="descripcion-kit-inventario"
                   value={descripcionKit} 
                   onChange={(e) => setDescripcionKit(e.target.value)} 
                   placeholder="Detalle de los requerimientos de este kit..." 
