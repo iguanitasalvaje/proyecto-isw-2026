@@ -20,13 +20,15 @@ function crearApp(pool, { requerirAutenticacion = true } = {}) {
   const usuarios = crearUsuarioRepository(pool);
 
   // Middleware de autenticación de token JWT
-  const autenticarToken = requerirAutenticacion
-    ? crearAutenticarToken(usuarios)
-    : (req, res, next) => {
-        // Modo bypass exclusivo para pruebas unitarias de HTTP previo si se solicita
-        req.user = req.user || { id: 'test-admin', rol: ROLES.DUENO, email: 'admin@sixseven.cl' };
-        next();
-      };
+  const verificarTokenReal = crearAutenticarToken(usuarios);
+  const autenticarToken = (req, res, next) => {
+    if (!requerirAutenticacion && !req.headers.authorization) {
+      // Modo bypass exclusivo para pruebas unitarias o de integración HTTP previas si se solicita
+      req.user = req.user || { id: 'test-admin', rol: ROLES.DUENO, email: 'admin@sixseven.cl' };
+      return next();
+    }
+    return verificarTokenReal(req, res, next);
+  };
 
   app.use(cors());
   app.use(express.json({ limit: '64kb' }));
