@@ -74,7 +74,7 @@ test('Inventario: esquema, repositorio y relaciones PostgreSQL', async t => conI
   const repo = crearInventarioRepository(db);
   await t.test('migrador idempotente y columnas compatibles con Prisma', async () => {
     await migrar(db);
-    assert.equal((await db.query('SELECT * FROM schema_migrations')).rowCount, 5);
+    assert.equal((await db.query('SELECT * FROM schema_migrations')).rowCount, 6);
     const columnas = (await db.query(`SELECT table_name, column_name, data_type, datetime_precision
       FROM information_schema.columns WHERE table_schema=current_schema()
       AND table_name IN ('kits','equipos','log_autorizaciones')`)).rows;

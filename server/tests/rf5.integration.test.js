@@ -45,7 +45,7 @@ test('RF5 persistencia PostgreSQL y compatibilidad RF12', async t => conBaseTemp
   const detalle = () => kits.obtenerDetalle(e.id);
   await t.test('migración idempotente y eventos nuevos con precio base', async () => {
     await migrar(db);
-    assert.equal((await db.query('SELECT * FROM schema_migrations')).rowCount, 4);
+    assert.equal((await db.query('SELECT * FROM schema_migrations')).rowCount, 6);
     assert.equal(e.precio_base, 500000);
     assert.equal(e.monto_total, 500000);
   });
