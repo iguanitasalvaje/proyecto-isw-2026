@@ -1,10 +1,10 @@
-CREATE TABLE kits (
+CREATE TABLE IF NOT EXISTS kits (
   id SERIAL PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
   descripcion TEXT
 );
 
-CREATE TABLE equipos (
+CREATE TABLE IF NOT EXISTS equipos (
   id SERIAL PRIMARY KEY,
   nombre VARCHAR(150) NOT NULL,
   tipo VARCHAR(50) NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE equipos (
 );
 CREATE INDEX "equipos_kitId_idx" ON equipos("kitId");
 
-CREATE TABLE log_autorizaciones (
+CREATE TABLE IF NOT EXISTS log_autorizaciones (
   id SERIAL PRIMARY KEY,
   "jefeTecnico" VARCHAR(100) NOT NULL,
   "eventoId" INTEGER NOT NULL,
