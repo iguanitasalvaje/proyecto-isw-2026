@@ -36,7 +36,7 @@ function crearApp(pool) {
         return res.status(400).json({ error: 'El precio base debe ser un monto numérico mayor a cero (RF2)' });
       }
 
-      // 2. Guardar en Neon PostgreSQL mediante el repositorio existente
+      // 2. Guardar en  mediante el repositorio existente
       const nuevoEvento = await operacion.crearEvento({
         nombre: nombre.trim(),
         cliente: cliente ? cliente.trim() : null,
@@ -48,6 +48,50 @@ function crearApp(pool) {
       });
 
       res.status(201).json(nuevoEvento);
+    } catch (err) {
+      next(err);
+    }
+  });
+    // --- VINCULAR TRABAJADOR A EVENTO / ASIGNACIÓN (RF4) ---
+  app.post('/api/eventos/:id/asignaciones', async (req, res, next) => {
+    try {
+      const eventoId = req.params.id;
+      const { personaId, rolId, porcentajeCentesimas } = req.body || {};
+
+      if (!personaId) {
+        return res.status(400).json({ error: 'El id del trabajador (personaId) es obligatorio' });
+      }
+
+      // 1. Obtener o crear un rolId válido si no viene en el body
+      let rolAsignar = rolId;
+      if (!rolAsignar) {
+        const roles = await operacion.listarRoles();
+        if (roles.length > 0) {
+          rolAsignar = roles[0].id;
+        } else {
+          const nuevoRol = await operacion.crearRol({ nombre: 'Técnico General' });
+          rolAsignar = nuevoRol.id;
+        }
+      }
+
+      // 2. Asegurar que porcentajeCentesimas sea un entero entre 0 y 10000 (0 = 0%)
+      const porcentajeValido = (typeof porcentajeCentesimas === 'number' && Number.isInteger(porcentajeCentesimas))
+        ? porcentajeCentesimas
+        : 0;
+
+      // 3. Obtener el evento para concurrencia de versiones
+      const evento = await operacion.obtenerEvento(eventoId);
+
+      // 4. Registrar la asignación en PostgreSQL
+      const nuevaAsignacion = await operacion.asignar({
+        eventoId,
+        personaId,
+        rolId: rolAsignar,
+        porcentajeCentesimas: porcentajeValido,
+        versionEvento: evento.version
+      });
+
+      res.status(201).json(nuevaAsignacion);
     } catch (err) {
       next(err);
     }
@@ -70,7 +114,7 @@ function crearApp(pool) {
         return res.status(400).json({ error: 'El teléfono de contacto es obligatorio (RF4)' });
       }
 
-      // 2. Guardar en Neon PostgreSQL mediante operacionRepository
+      // 2. Guardar mediante operacionRepository
       const nuevaPersona = await operacion.crearPersona({
         nombre: nombre.trim(),
         telefono: telefono.trim(),
