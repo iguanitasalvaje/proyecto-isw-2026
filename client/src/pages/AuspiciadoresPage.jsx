@@ -1,3 +1,5 @@
+import CanjesRF8 from '../components/CanjesRF8';
+
 function AuspiciadoresPage() {
   const columnas =
     '1.15fr 1.55fr 1.35fr 0.9fr 0.9fr 0.9fr 0.9fr 1fr'
@@ -60,6 +62,10 @@ function AuspiciadoresPage() {
 
         <button
           type="button"
+          onClick={() =>
+            document.getElementById('rf8-nuevo-auspiciador')
+              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
           style={{
             backgroundColor: '#2f6fe4',
             color: '#ffffff',
@@ -68,7 +74,7 @@ function AuspiciadoresPage() {
             padding: '12px 18px',
             fontSize: '16px',
             fontWeight: '600',
-            cursor: 'default',
+            cursor: 'pointer',
           }}
         >
           + Nuevo Auspiciador
@@ -624,6 +630,7 @@ function AuspiciadoresPage() {
           </div>
         </div>
       </div>
+      <CanjesRF8 />
     </main>
   )
 }

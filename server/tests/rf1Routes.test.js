@@ -143,3 +143,21 @@ test('Jefe Técnico no puede acceder a Calculadora de Pagos', async () => {
   const estado = await probarAcceso({ rol: ROLES.JEFE_TECNICO }, '/calculadora-pagos');
   assert.equal(estado, 403);
 });
+
+// Prueba 17: Dueño puede acceder a Personal (200)
+test('Dueño puede acceder a Personal', async () => {
+  const estado = await probarAcceso({ rol: ROLES.DUENO }, '/personal');
+  assert.equal(estado, 200);
+});
+
+// Prueba 18: Contador NO puede acceder a Personal (403)
+test('Contador no puede acceder a Personal', async () => {
+  const estado = await probarAcceso({ rol: ROLES.CONTADOR }, '/personal');
+  assert.equal(estado, 403);
+});
+
+// Prueba 19: Jefe Técnico NO puede acceder a Personal (403)
+test('Jefe Técnico no puede acceder a Personal', async () => {
+  const estado = await probarAcceso({ rol: ROLES.JEFE_TECNICO }, '/personal');
+  assert.equal(estado, 403);
+});

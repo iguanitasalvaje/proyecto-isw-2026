@@ -40,4 +40,11 @@ router.get('/inventario', autorizarRol(ROLES.DUENO, ROLES.JEFE_TECNICO), (req, r
   });
 });
 
+// Personal: Exclusivo para el Dueño (Contador y Jefe Técnico no tienen acceso)
+router.get('/personal', autorizarRol(ROLES.DUENO), (req, res) => {
+  res.json({
+    mensaje: 'Acceso autorizado al módulo Personal'
+  });
+});
+
 module.exports = router;

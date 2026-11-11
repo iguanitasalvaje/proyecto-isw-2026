@@ -1,6 +1,6 @@
 # Arquitectura de Persistencia y Base de Datos (PostgreSQL)
 **Proyecto:** Six Seven Transmisiones  
-**Módulos integrados:** RF1 (Usuarios y Roles), RF5 (Kits Premium), RF12 (Liquidaciones y Eventos)
+**Módulos integrados:** RF1 (Usuarios y Roles), RF2 (Creación Transmisiones), RF4 (Personal), RF5 (Kits Premium), RF8 (Canjes Auspiciadores), RF9/RF13 (Inventario y Mermas), RF12 (Liquidaciones y Eventos), RF14 (Dashboard Financiero)
 
 Este directorio gestiona la persistencia de datos en PostgreSQL, el pool de conexiones del paquete `pg`, el sistema transaccional de migraciones y la compatibilidad entre entornos locales y en la nube.
 
@@ -89,10 +89,13 @@ Las migraciones se encuentran en `server/db/migrations/` y se ejecutan en orden 
 | `001_rf12.sql` | RF12 | Tablas base: `evento`, `persona`, `rol_evento`, `valor_rol`, `asignacion_evento`, `liquidacion`, `detalle_liquidacion`. |
 | `002_rf12_porcentaje_individual.sql` | RF12 | Porcentajes individuales en asignaciones y estados del evento (`pendiente`, `en_curso`, `finalizado`). |
 | `003_rf5_kit_premium.sql` | RF5 | Soporte para Kits físicos, kits Premium y configuración de recargos porcentuales (`kit`, `configuracion_recargo`, `asignacion_kit_evento`). |
+| `004_inventario.sql` | RF9 / RF13 | Soporte para equipos, mermas y estados del inventario. |
 | `004_rf1_usuarios.sql` | RF1 | Tabla `usuario` con identificador UUID, email único en minúsculas, contraseña con hash bcrypt, roles (`DUENO`, `CONTADOR`, `JEFE_TECNICO`), estado activo y timestamps. |
+| `004_rf8_canjes.sql` | RF8 | Tablas `auspiciador` y `canje_auspiciador` para registro y valoración estimada en CLP de canjes comerciales. |
+| `005_rf14_gastos_operativos.sql` | RF14 | Registro y persistencia de gastos operativos asociados a eventos para el balance financiero. |
 
 ### Reglas para nuevas migraciones:
-- Deben nombrarse con formato secuencial: `005_nombre_descriptivo.sql`.
+- Deben nombrarse con formato secuencial: `006_nombre_descriptivo.sql`.
 - **Nunca modificar migraciones ya aplicadas**: El script `migrate.js` valida el checksum SHA-256 de cada archivo contra la tabla `schema_migrations`. Si detecta que un archivo fue alterado tras su aplicación, aborta por seguridad.
 
 ---
@@ -127,18 +130,40 @@ Para conectar el backend a un proveedor externo (Neon, Supabase, Render, Railway
 - `PATCH /api/usuarios/:id/estado`: `{ activo }` (exclusivo Dueño).
 - `PATCH /api/usuarios/:id/password`: `{ password }` (exclusivo Dueño).
 
-### Eventos y Asignaciones (RF12)
+### Eventos y Asignaciones (RF2, RF4, RF12)
 *Acceso autorizado: Dueño y Contador.*
-- Lecturas: `GET /api/eventos`, `GET /api/eventos/:id`, `GET /api/eventos/:id/asignaciones`, `GET /api/eventos/:id/liquidacion`, `GET /api/personas` y `GET /api/roles`. Una liquidación aún no guardada devuelve 404.
-- Las escrituras requieren `versionEvento`, entero positivo leído del evento:
-  - `PATCH /api/eventos/:id/estado`: además `estado` (`en_curso` o `finalizado`).
-  - `PATCH /api/eventos/:id/asignaciones/porcentajes`: además `cambios: [{ asignacionId, porcentajeCentesimas }]` (10000 = 100%).
-  - `POST /api/eventos/:id/liquidacion/previsualizacion`.
-  - `POST /api/eventos/:id/liquidacion`: usar la versión de la previsualización.
+- `GET /api/eventos`: listado de eventos registrados.
+- `POST /api/eventos`: `{ nombre, cliente, precioBase, fecha, lugar }` (crear/agendar evento, RF2).
+- `GET /api/eventos/:id`: detalle de un evento por ID.
+- `GET /api/eventos/:id/asignaciones`: integrantes asignados al evento.
+- `POST /api/eventos/:id/asignaciones`: `{ personaId, rolId, porcentajeCentesimas }` (asignar personal, RF4).
+- `PATCH /api/eventos/:id/asignaciones/porcentajes`: `{ versionEvento, cambios: [{ asignacionId, porcentajeCentesimas }] }` (RF12).
+- `PATCH /api/eventos/:id/estado`: `{ versionEvento, estado }` (`en_curso` o `finalizado`).
+- `POST /api/eventos/:id/liquidacion/previsualizacion`: cálculo previo de liquidación.
+- `POST /api/eventos/:id/liquidacion`: registro definitivo de liquidación.
+- `GET /api/eventos/:id/liquidacion`: consulta histórica de la liquidación guardada.
 
-Una edición por lote es atómica. El backend calcula los pagos y descarta los importes recibidos. Respuestas: 400 validación, 401 no autenticado, 403 no autorizado, 404 inexistente, 409 conflicto de versión/estado/liquidación y 500 inesperado sin detalles internos.
+### Personal y Roles (RF4)
+*Acceso autorizado: Dueño y Contador.*
+- `GET /api/personas`: listado de trabajadores registrados.
+- `POST /api/personas`: `{ nombre, telefono }` (registro de nuevo trabajador).
+- `GET /api/roles`: listado de roles y cargos operativos.
+- `POST /api/roles`: `{ nombre, porcentajeSugerido }` (crear nuevo rol).
 
-Las migraciones no insertan datos de negocio. La calculadora utiliza eventos, personas, roles y asignaciones existentes; no implementa su administración. Las operaciones de preparación están en `operacionRepository.js`. Una asignación sin sugerencia vigente requiere porcentaje explícito; los porcentajes históricos NULL deben completarse antes de liquidar.
+### Auspiciadores y Canjes Publicitarios (RF8)
+*Acceso autorizado: Dueño y Contador.*
+- `GET /api/auspiciadores`: listado de auspiciadores.
+- `POST /api/auspiciadores`: `{ nombre }`.
+- `GET /api/auspiciadores/canjes`: listado de canjes asociados a eventos.
+- `POST /api/auspiciadores/canjes`: `{ auspiciadorId, eventoId, descripcion, montoEstimadoClp }`.
+
+### Inventario y Mermas (RF9 / RF13)
+*Acceso autorizado: Lectura para Dueño y Jefe Técnico; Modificación para Dueño y Jefe Técnico.*
+- `GET /api/inventario/equipos`: listado de equipos.
+- `POST /api/inventario/equipos`: `{ nombre, categoria, estado, serial }`.
+- `GET /api/inventario/mermas`: histórico de mermas registradas.
+- `POST /api/inventario/mermas`: `{ equipoId, motivo, costoEstimado }`.
+- `GET /api/inventario/resumen`: resumen de disponibilidad y estado del inventario.
 
 ### Kits y Recargo Premium (RF5)
 *Acceso autorizado: Lectura para Dueño, Jefe Técnico y Contador; Modificación para Dueño y Jefe Técnico.*
@@ -150,7 +175,11 @@ Las migraciones no insertan datos de negocio. La calculadora utiliza eventos, pe
 - `PUT /api/eventos/:id/kit`: `{ kitId, versionEvento }`; `kitId: null` desasigna. Los importes enviados por el cliente no se utilizan.
 - `PATCH /api/eventos/:id/precio-base`: `{ precioBase, versionEvento }`.
 
-Para crear eventos desde la integración existente, `crearEvento` acepta `precioBase`; el nombre anterior `montoTotalEvento` se conserva por compatibilidad y representa el importe inicial sin recargo. No se implementa administración de eventos en RF5. `actualizarMonto` rechaza totales manuales cuando existe un kit; en ese caso se utiliza `actualizarPrecioBase` del repositorio de kits.
+### Reportes Financieros y Gastos (RF14)
+*Acceso autorizado: Dueño y Contador.*
+- `GET /api/reportes/financiero`: dashboard financiero con rentabilidad calculada desde PostgreSQL.
+- `GET /api/eventos/:id/gastos`: listado de gastos operativos del evento.
+- `POST /api/eventos/:id/gastos`: `{ descripcion, monto, categoria }` (registro de gasto).
 
 ---
 
@@ -175,8 +204,9 @@ Contrato y alcance: `server/domain/recargoPremium.md` y `server/domain/liquidaci
 
 | Comando | Descripción |
 |---|---|
-| `npm test` | Suite de pruebas unitarias automáticas (RF1, RF5, RF12 y arquitectura DB) sin BD activa. |
+| `npm test` | Suite de pruebas unitarias automáticas (RF1, RF5, RF8, RF12, RF14 y arquitectura DB) sin BD activa. |
 | `npm run test:rf1` | Pruebas unitarias de RF1 (modelos, roles, autenticación JWT, autorización). |
+| `npm run test:rf8` | Pruebas unitarias de RF8 (canjes de auspiciadores). |
 | `npm run test:db` | Pruebas unitarias de arquitectura PostgreSQL (validación de URLs, esquemas, SSL, checksum). |
 | `npm run db:check` | Diagnostica conexión a PostgreSQL, versión del servidor y migraciones aplicadas. |
 | `npm run db:migrate` | Aplica todas las migraciones SQL pendientes de forma transaccional. |
@@ -187,3 +217,4 @@ Contrato y alcance: `server/domain/recargoPremium.md` y `server/domain/liquidaci
 | `npm run test:rf5:integration` | Pruebas de persistencia e integración de RF5 con PostgreSQL real. |
 | `npm run test:rf5:http` | Pruebas de API HTTP de RF5 con base temporal `TEST_DATABASE_URL`. |
 | `npm run start` | Inicia el servidor backend en el puerto configurado (`PORT=1303`). |
+| `npm run dev` | Inicia el servidor backend con reinicio automático (`node --watch index.js`). |
