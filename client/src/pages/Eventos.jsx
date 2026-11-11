@@ -1,81 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import FormularioTransmision from '../components/ui/FormularioTransmision';
+import { api } from '../services/api';
 
 const Eventos = () => {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [eventos, setEventos] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(null);
 
-  const eventos = [
-    {
-      id: 1,
-      fecha: '05 sept 2025',
-      hora: '14:00',
-      nombre: 'Lanzamiento Producto Falabella',
-      cliente: 'Falabella Corporativo',
-      tipo: 'Corporativo',
-      lugar: 'Hotel W Santiago',
-      ciudad: 'Santiago',
-      estado: 'Confirmado',
-      precioBase: 480000,
-      montoPagado: 240000, // 50% (OK)
-      gastos: '$165.000',
-      rentabilidad: '+$315.000',
-    },
-    {
-      id: 2,
-      fecha: '30 ago 2025',
-      hora: '18:00',
-      nombre: 'Final Copa Chile Sub-17',
-      cliente: 'ANFP',
-      tipo: 'Deportivo',
-      lugar: 'Estadio Monumental',
-      ciudad: 'Santiago',
-      estado: 'Confirmado',
-      precioBase: 1200000,
-      montoPagado: 300000, // 25% -> ALERTA ROJA (< 50%)
-      gastos: '$393.000',
-      rentabilidad: '+$807.000',
-    },
-    {
-      id: 3,
-      fecha: '23 ago 2025',
-      hora: '09:00',
-      nombre: 'Torneo Interempresas Basketball',
-      cliente: 'Copec Empresas',
-      tipo: 'Deportivo',
-      lugar: 'Gimnasio Municipal Ñuñoa',
-      ciudad: 'Santiago',
-      estado: 'En Curso',
-      precioBase: 600000,
-      montoPagado: 600000, // 100% (OK)
-      gastos: '$290.000',
-      rentabilidad: '+$310.000',
-    },
-    {
-      id: 4,
-      fecha: '16 ago 2025',
-      hora: '11:00',
-      nombre: 'Graduación Ingeniería 2025',
-      cliente: 'Universidad del Pacífico',
-      tipo: 'Graduación',
-      lugar: 'Casino Enjoy',
-      ciudad: 'Santiago',
-      estado: 'Agendado',
-      precioBase: 320000,
-      montoPagado: 100000, // 31.25% -> ALERTA ROJA (< 50%)
-      gastos: '$165.000',
-      rentabilidad: '+$155.000',
-    },
-  ];
+  // Función para obtener los eventos reales desde el backend / PostgreSQL
+  const cargarEventos = async () => {
+    try {
+      setCargando(true);
+      setError(null);
+      const data = await api('/eventos');
+      setEventos(data);
+    } catch (err) {
+      console.error('Error al obtener eventos:', err);
+      setError(err.message || 'No se pudieron cargar los eventos');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarEventos();
+  }, []);
+
+  // Formateador auxiliar para fechas o montos financieros
+  const formatearDinero = (monto) => {
+    const num = Number(monto) || 0;
+    return `$${num.toLocaleString('es-CL')}`;
+  };
+
+  // Cálculo de rentabilidad total acumulada para la cabecera
+  const rentabilidadTotal = eventos.reduce((acc, ev) => {
+    const precio = Number(ev.monto_total || ev.precioBase || 0);
+    const gastos = Number(ev.gastos_monto || 0);
+    return acc + (precio - gastos);
+  }, 0);
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-50 p-8 font-sans relative">
       
-      {/* Encabezado */}
+      {/* Encabezado con totales automáticos */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white">Eventos</h1>
           <p className="text-slate-400 text-sm mt-1">
-            5 eventos · Rentabilidad total: <span className="text-green-500 font-bold">$2.180.000</span>
+            {eventos.length} eventos · Rentabilidad total:{' '}
+            <span className="text-green-500 font-bold">
+              {formatearDinero(rentabilidadTotal)}
+            </span>
           </p>
         </div>
         
@@ -102,7 +78,20 @@ const Eventos = () => {
         </select>
       </div>
 
-      {/* Tabla Completa con TODAS las columnas */}
+      {/* Indicadores de carga o error si falla el backend */}
+      {cargando && (
+        <div className="text-slate-400 text-sm mb-4">Cargando eventos desde el servidor PostgreSQL...</div>
+      )}
+      {error && (
+        <div className="bg-red-950/60 border border-red-800 text-red-200 p-4 rounded-lg mb-6 text-sm flex justify-between items-center">
+          <span>⚠️ {error}</span>
+          <button onClick={cargarEventos} className="bg-red-900 px-3 py-1 rounded text-xs font-bold hover:bg-red-800">
+            Reintentar
+          </button>
+        </div>
+      )}
+
+      {/* Tabla Completa con TODAS tus columnas UI intactas */}
       <div className="bg-slate-800 rounded-xl overflow-x-auto border border-slate-700 shadow-lg">
         <table className="w-full text-left text-sm border-collapse">
           <thead>
@@ -122,7 +111,13 @@ const Eventos = () => {
           </thead>
           <tbody className="divide-y divide-slate-700/60">
             {eventos.map((ev) => {
-              const requiereAlerta = ev.montoPagado < ev.precioBase * 0.5;
+              // Soporte dinámico para datos del backend y fallback visual
+              const precioBase = Number(ev.precio_base || ev.precioBase || 0);
+              const montoPagado = Number(ev.monto_pagado || ev.montoPagado || 0);
+              const requiereAlerta = montoPagado < precioBase * 0.5;
+
+              const fechaFormatted = ev.fecha ? new Date(ev.fecha).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' }) : (ev.fecha || 'Sin fecha');
+              const horaFormatted = ev.fecha ? new Date(ev.fecha).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) : (ev.hora || '12:00');
 
               return (
                 <tr 
@@ -134,29 +129,29 @@ const Eventos = () => {
                   }`}
                 >
                   <td className="px-4 py-4 text-slate-400">
-                    <div className="text-slate-100 font-medium">{ev.fecha}</div>
-                    <div className="text-xs">{ev.hora}</div>
+                    <div className="text-slate-100 font-medium">{fechaFormatted}</div>
+                    <div className="text-xs">{horaFormatted}</div>
                   </td>
                   <td className="px-4 py-4">
                     <div className="font-bold text-white">{ev.nombre}</div>
-                    <div className="text-slate-400 text-xs">{ev.cliente}</div>
+                    <div className="text-slate-400 text-xs">{ev.cliente || 'Cliente General'}</div>
                   </td>
                   <td className="px-4 py-4">
                     <span className="bg-slate-900 text-slate-300 px-2.5 py-1 rounded-md text-xs border border-slate-700">
-                      {ev.tipo}
+                      {ev.tipo || 'Transmisión'}
                     </span>
                   </td>
                   <td className="px-4 py-4 text-slate-400">
-                    <div className="text-slate-200">{ev.lugar}</div>
-                    <div className="text-xs">{ev.ciudad}</div>
+                    <div className="text-slate-200">{ev.lugar || 'Por definir'}</div>
+                    <div className="text-xs">{ev.ciudad || 'Santiago'}</div>
                   </td>
                   <td className="px-4 py-4">
                     <span className={`px-2.5 py-1 rounded-md font-bold text-xs ${
-                      ev.estado === 'Confirmado' 
+                      ev.estado === 'Confirmado' || ev.estado === 'en_curso'
                         ? 'bg-blue-950 text-blue-400 border border-blue-800' 
                         : 'bg-amber-950 text-amber-400 border border-amber-800'
                     }`}>
-                      {ev.estado}
+                      {ev.estado || 'Agendado'}
                     </span>
                   </td>
                   <td className="px-4 py-4">
@@ -171,13 +166,13 @@ const Eventos = () => {
                     )}
                   </td>
                   <td className="px-4 py-4 text-slate-200 font-medium">
-                    ${ev.precioBase.toLocaleString('es-CL')}
+                    {formatearDinero(precioBase)}
                   </td>
                   <td className="px-4 py-4 font-bold text-slate-100">
-                    ${ev.montoPagado.toLocaleString('es-CL')}
+                    {formatearDinero(montoPagado)}
                   </td>
-                  <td className="px-4 py-4 text-red-400">{ev.gastos}</td>
-                  <td className="px-4 py-4 text-green-500 font-bold">{ev.rentabilidad}</td>
+                  <td className="px-4 py-4 text-red-400">{ev.gastos || '$0'}</td>
+                  <td className="px-4 py-4 text-green-500 font-bold">{ev.rentabilidad || formatearDinero(precioBase - (ev.gastos_monto || 0))}</td>
                   <td className="px-4 py-4 text-right">
                     <button className="border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md text-xs transition-colors cursor-pointer">
                       Gestionar
@@ -200,7 +195,10 @@ const Eventos = () => {
             >
               ✕
             </button>
-            <FormularioTransmision onClose={() => setMostrarFormulario(false)} />
+            <FormularioTransmision 
+              onClose={() => setMostrarFormulario(false)} 
+              onEventoCreado={cargarEventos}
+            />
           </div>
         </div>
       )}
