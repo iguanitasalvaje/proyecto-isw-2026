@@ -102,7 +102,7 @@ function crearApp(pool) {
   app.patch('/api/inventario/equipos/:equipoId/kit', async (req, res, next) => {
     try {
       const { kitId } = req.body || {};
-      const equipoActualizado = await inventario.asignarEquipoAKit(req.params.equipoId, kitId || null);
+      const equipoActualizado = await inventario.asignarEquipoAKit(req.params.equipoId, kitId);
       if (!equipoActualizado) return res.status(404).json({ error: 'Equipo no encontrado' });
 
       res.json(equipoActualizado);
