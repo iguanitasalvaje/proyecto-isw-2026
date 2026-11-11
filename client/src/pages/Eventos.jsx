@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import FormularioTransmision from '../components/ui/FormularioTransmision';
+import { useAuth } from '../context/AuthContext';
+import { ROLES } from '../config/permisos';
 
 const Eventos = () => {
+  const { rolActivo } = useAuth();
+  const puedeAdministrarEventos = rolActivo === ROLES.DUENO;
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
 
   const eventos = [
@@ -69,7 +73,7 @@ const Eventos = () => {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-50 p-8 font-sans relative">
-      
+
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div>
@@ -78,20 +82,22 @@ const Eventos = () => {
             5 eventos · Rentabilidad total: <span className="text-green-500 font-bold">$2.180.000</span>
           </p>
         </div>
-        
-        <button 
-          onClick={() => setMostrarFormulario(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition-colors cursor-pointer self-start md:self-auto"
-        >
-          + Nuevo Evento
-        </button>
+
+        {puedeAdministrarEventos && (
+          <button
+            onClick={() => setMostrarFormulario(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition-colors cursor-pointer self-start md:self-auto"
+          >
+            + Nuevo Evento
+          </button>
+        )}
       </div>
 
       {/* Filtros */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <input 
-          type="text" 
-          placeholder="Buscar evento, cliente, ciudad..." 
+        <input
+          type="text"
+          placeholder="Buscar evento, cliente, ciudad..."
           className="bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-400 px-4 py-2.5 rounded-md w-full sm:w-80 focus:outline-none focus:border-blue-500"
         />
         <select className="bg-slate-800 border border-slate-700 text-slate-100 px-4 py-2.5 rounded-md focus:outline-none focus:border-blue-500 cursor-pointer">
@@ -125,11 +131,11 @@ const Eventos = () => {
               const requiereAlerta = ev.montoPagado < ev.precioBase * 0.5;
 
               return (
-                <tr 
-                  key={ev.id} 
+                <tr
+                  key={ev.id}
                   className={`transition-colors ${
-                    requiereAlerta 
-                      ? 'bg-red-950/20 hover:bg-red-950/40' 
+                    requiereAlerta
+                      ? 'bg-red-950/20 hover:bg-red-950/40'
                       : 'hover:bg-slate-700/30'
                   }`}
                 >
@@ -152,8 +158,8 @@ const Eventos = () => {
                   </td>
                   <td className="px-4 py-4">
                     <span className={`px-2.5 py-1 rounded-md font-bold text-xs ${
-                      ev.estado === 'Confirmado' 
-                        ? 'bg-blue-950 text-blue-400 border border-blue-800' 
+                      ev.estado === 'Confirmado'
+                        ? 'bg-blue-950 text-blue-400 border border-blue-800'
                         : 'bg-amber-950 text-amber-400 border border-amber-800'
                     }`}>
                       {ev.estado}
@@ -194,7 +200,7 @@ const Eventos = () => {
       {mostrarFormulario && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="relative w-full max-w-lg bg-slate-800 rounded-xl shadow-2xl overflow-hidden border border-slate-700">
-            <button 
+            <button
               onClick={() => setMostrarFormulario(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold text-xl px-2 py-1 rounded cursor-pointer z-10"
             >

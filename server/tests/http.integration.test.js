@@ -10,6 +10,9 @@ const { crearApp } = require('../app');
 
 test('API HTTP RF12 con PostgreSQL real', async t => {
   assert.ok(process.env.TEST_DATABASE_URL, 'Falta TEST_DATABASE_URL');
+  if (process.env.DATABASE_URL && process.env.TEST_DATABASE_URL.trim() === process.env.DATABASE_URL.trim()) {
+    throw new Error('TEST_DATABASE_URL no debe ser idéntica a DATABASE_URL para proteger la base principal');
+  }
   const schema = `rf12_http_${randomUUID().replaceAll('-', '')}`;
   const admin = crearPool({ connectionString: process.env.TEST_DATABASE_URL });
   const pool = crearPool({ connectionString: process.env.TEST_DATABASE_URL, schema });

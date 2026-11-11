@@ -1,3 +1,4 @@
+
 // Roles disponibles en Six Seven Transmisiones
 
 const ROLES = Object.freeze({
@@ -6,11 +7,32 @@ const ROLES = Object.freeze({
   JEFE_TECNICO: 'JEFE_TECNICO'
 });
 
-// Módulos asignados a cada rol según RF1
+// Módulos autorizados para cada rol según RF1
 const PERMISOS = Object.freeze({
-  [ROLES.DUENO]: ['eventos'],
-  [ROLES.CONTADOR]: ['finanzas'],
-  [ROLES.JEFE_TECNICO]: ['inventario']
+  [ROLES.DUENO]: [
+    'dashboard',
+    'eventos',
+    'inventario',
+    'personal',
+    'auspiciadores',
+    'finanzas',
+    'reportes',
+    'calculadora-pagos'
+  ],
+
+  [ROLES.CONTADOR]: [
+    'dashboard',
+    'eventos',
+    'auspiciadores',
+    'finanzas',
+    'reportes',
+    'calculadora-pagos'
+  ],
+
+  [ROLES.JEFE_TECNICO]: [
+    'dashboard',
+    'inventario'
+  ]
 });
 
 module.exports = {

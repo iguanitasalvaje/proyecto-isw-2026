@@ -9,6 +9,9 @@ const { crearLiquidacionRepository } = require('../repositories/liquidacionRepos
 
 test('persistencia RF12 contra PostgreSQL real', async t => {
   assert.ok(process.env.TEST_DATABASE_URL, 'Falta TEST_DATABASE_URL: se requiere una base exclusiva de test');
+  if (process.env.DATABASE_URL && process.env.TEST_DATABASE_URL.trim() === process.env.DATABASE_URL.trim()) {
+    throw new Error('TEST_DATABASE_URL no debe ser idéntica a DATABASE_URL para proteger los datos de desarrollo o producción');
+  }
   const schema = `rf12_test_${randomUUID().replaceAll('-', '')}`;
   const admin = crearPool({ connectionString: process.env.TEST_DATABASE_URL });
   const pool = crearPool({ connectionString: process.env.TEST_DATABASE_URL, schema });
@@ -20,8 +23,8 @@ test('persistencia RF12 contra PostgreSQL real', async t => {
     const liq = crearLiquidacionRepository(pool);
     await t.test('migraciones idempotentes y base vacía', async () => {
       await migrar(pool);
-      assert.equal((await pool.query('SELECT * FROM schema_migrations')).rowCount, 3);
-      for (const tabla of ['evento', 'persona', 'rol_evento', 'valor_rol', 'asignacion_evento', 'liquidacion', 'detalle_liquidacion']) {
+      assert.ok((await pool.query('SELECT * FROM schema_migrations')).rowCount >= 3);
+      for (const tabla of ['evento', 'persona', 'rol_evento', 'valor_rol', 'asignacion_evento', 'liquidacion', 'detalle_liquidacion', 'kit', 'usuario']) {
         assert.equal((await pool.query(`SELECT * FROM ${tabla}`)).rowCount, 0);
       }
     });

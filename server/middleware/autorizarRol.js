@@ -1,3 +1,5 @@
+'use strict';
+
 // Middleware de autorización por roles - RF1
 const { ROLES } = require('../config/roles');
 
@@ -13,23 +15,22 @@ const autorizarRol = (...rolesPermitidos) => {
   }
 
   return (req, res, next) => {
-    // El usuario debe haber sido autenticado previamente.
+    // El usuario debe haber sido autenticado previamente por autenticarToken
     const usuario = req.user;
 
     if (!usuario) {
       return res.status(401).json({
-        mensaje: 'Debes iniciar sesión para acceder.'
+        error: 'Debes iniciar sesión para acceder.'
       });
     }
 
-    // Verificamos que su rol esté autorizado.
+    // Verificamos que su rol esté autorizado para esta ruta/operación
     if (!rolesPermitidos.includes(usuario.rol)) {
       return res.status(403).json({
-        mensaje: 'No tienes permisos para acceder a este módulo.'
+        error: 'No tienes permisos para acceder a este módulo o realizar esta operación.'
       });
     }
 
-    // El usuario tiene permiso.
     next();
   };
 };

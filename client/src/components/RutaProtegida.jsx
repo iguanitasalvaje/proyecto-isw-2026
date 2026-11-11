@@ -1,12 +1,45 @@
+import { Navigate, useLocation, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { tienePermiso } from '../config/permisos';
 
-function RutaProtegida({ rol, ruta, children }) {
-  const sinSesion = !rol;
+export default function RutaProtegida({ ruta, children }) {
+  const { usuario, rolActivo, estaAutenticado, cargando } = useAuth();
+  const location = useLocation();
 
-  if (!sinSesion && tienePermiso(rol, ruta)) {
+  if (cargando) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#090d16',
+          color: '#94a3b8',
+          fontFamily: 'system-ui, sans-serif'
+        }}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '18px', fontWeight: 600, color: '#f8fafc', marginBottom: '8px' }}>
+            Six Seven Transmisiones
+          </div>
+          <p style={{ fontSize: '13px', margin: 0 }}>Comprobando sesión activa...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 1. Sin sesión activa: Redirigir a Login recordando la ruta de origen
+  if (!estaAutenticado) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  // 2. Con sesión y con permiso para el módulo
+  if (tienePermiso(rolActivo, ruta)) {
     return children;
   }
 
+  // 3. Con sesión pero sin permiso para esta sección (403)
   return (
     <div
       style={{
@@ -33,11 +66,11 @@ function RutaProtegida({ rol, ruta, children }) {
           style={{
             fontSize: '46px',
             marginBottom: '12px',
-            color: '#3b82f6',
+            color: '#ef4444',
             fontWeight: '700',
           }}
         >
-          {sinSesion ? '401' : '403'}
+          403
         </div>
 
         <h2
@@ -48,7 +81,7 @@ function RutaProtegida({ rol, ruta, children }) {
             marginBottom: '12px',
           }}
         >
-          {sinSesion ? 'Sesión requerida' : 'Acceso denegado'}
+          Acceso no autorizado
         </h2>
 
         <p
@@ -58,28 +91,29 @@ function RutaProtegida({ rol, ruta, children }) {
             lineHeight: '1.7',
           }}
         >
-          {sinSesion
-            ? 'Debes iniciar sesión para acceder a este módulo.'
-            : 'Tu perfil no tiene los permisos necesarios para acceder a esta sección.'}
+          Tu cuenta con rol <strong>{usuario?.rol}</strong> no tiene permisos para acceder al módulo{' '}
+          <code style={{ background: '#0b1120', padding: '2px 6px', borderRadius: '4px', color: '#60a5fa' }}>{ruta}</code>.
         </p>
 
-        <div
-          style={{
-            marginTop: '28px',
-            padding: '12px',
-            backgroundColor: '#1e293b',
-            borderRadius: '8px',
-            color: '#60a5fa',
-            fontSize: '13px',
-          }}
-        >
-          {sinSesion
-            ? 'Inicia sesión con una cuenta autorizada.'
-            : 'Contacta al administrador si necesitas acceso.'}
+        <div style={{ marginTop: '28px' }}>
+          <Link
+            to="/"
+            style={{
+              display: 'inline-block',
+              padding: '10px 20px',
+              backgroundColor: '#2563eb',
+              color: '#ffffff',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              fontSize: '14px',
+              fontWeight: 600,
+              transition: 'background 0.2s'
+            }}
+          >
+            Volver al Dashboard
+          </Link>
         </div>
       </div>
     </div>
   );
 }
-
-export default RutaProtegida;
