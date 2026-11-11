@@ -1,60 +1,158 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import KitsPanel from '../components/kits/KitsPanel';
 
-// 1. Datos iniciales de prueba (Mock Data) con valor de reposición monetario (RF9 y RF13)
-const EQUIPOS_INICIALES = [
-  { id: 1, nombre: 'Sony FX3 #1', tipo: 'Cámara', serie: 'SN-FX3-001', estado: 'Disponible', kits: ['Fútbol', 'Corporativo'], valorReposicion: 3500000 },
-  { id: 2, nombre: 'Sony FX3 #2', tipo: 'Cámara', serie: 'SN-FX3-002', estado: 'En Uso', kits: ['Fútbol'], valorReposicion: 3500000 },
-  { id: 3, nombre: 'Canon C70 #1', tipo: 'Cámara', serie: 'CN-C70-001', estado: 'Disponible', kits: ['Fútbol', 'Graduación'], valorReposicion: 4000000 },
-  { id: 4, nombre: 'Trípode Manfrotto #1', tipo: 'Trípode', serie: 'MF-T100-001', estado: 'Disponible', kits: ['Fútbol', 'Graduación'], valorReposicion: 450000 },
-  { id: 5, nombre: 'Trípode Manfrotto #2', tipo: 'Trípode', serie: 'MF-T100-002', estado: 'Dañado', kits: [], valorReposicion: 450000 },
-  { id: 6, nombre: 'Cable HDMI 15m #2', tipo: 'Cable', serie: 'HDMI-15-002', estado: 'Perdido', kits: [], valorReposicion: 35000 },
-  { id: 7, nombre: 'Mezcladora Blackmagic ATEM Mini', tipo: 'Switch', serie: 'BM-AM-001', estado: 'Disponible', kits: ['Fútbol', 'Corporativo'], valorReposicion: 800000 },
-  // Equipos en historial de baja para el reporte financiero de mermas (RF13)
-  { id: 8, nombre: 'Monitor Feelworld 7"', tipo: 'Monitor', serie: 'FW-M7-002', estado: 'Dado de Baja', kits: [], valorReposicion: 250000, motivo: 'Pantalla rota en traslado' },
-  { id: 9, nombre: 'Micrófono Sennheiser XSW-D', tipo: 'Micrófono', serie: 'SN-XSD-002', estado: 'Dado de Baja', kits: [], valorReposicion: 280000, motivo: 'Pérdida en evento 15-ago' },
-];
+const API_EQUIPOS_URL = 'http://localhost:1303/api/inventario/equipos';
+const API_KITS_URL = 'http://localhost:1303/api/inventario/kits';
+
+async function consultarInventario(signal) {
+  const [resEquipos, resKits] = await Promise.all([
+    fetch(API_EQUIPOS_URL, { signal }),
+    fetch(API_KITS_URL, { signal }),
+  ]);
+  if (!resEquipos.ok || !resKits.ok) throw new Error('Error al cargar el inventario');
+  const [equipos, kits] = await Promise.all([resEquipos.json(), resKits.json()]);
+  return { equipos, kits };
+}
 
 export default function InventarioPage() {
-  // Estados para controlar las pestañas y la lista de equipos
   const [tabActiva, setTabActiva] = useState('equipos'); 
-  const [equipos, setEquipos] = useState(EQUIPOS_INICIALES);
+  const [equipos, setEquipos] = useState([]);
+  const [kits, setKits] = useState([]);
+  const [cargandoInventario, setCargandoInventario] = useState(true);
+  const [errorInventario, setErrorInventario] = useState(null);
 
-  // Estado para el Modal de Nuevo Equipo (RF9)
-  const [mostrarModalNuevo, setMostrarModalNuevo] = useState(false);
+  // Estados para Modal Nuevo Equipo (RF9)
+  const [mostrarModalEquipo, setMostrarModalEquipo] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [nuevoTipo, setNuevoTipo] = useState('Cámara');
   const [nuevaSerie, setNuevaSerie] = useState('');
   const [nuevoValor, setNuevoValor] = useState('');
 
-  // Filtrar equipos dados de baja
-  const equiposDeBaja = equipos.filter(e => e.estado === 'Dado de Baja');
-  
-  // Calcular pérdida financiera total (RF13)
-  const perdidaTotal = equiposDeBaja.reduce((total, equipo) => total + (equipo.valorReposicion || 0), 0);
+  // Estados para Modal Nuevo Kit (RF7)
+  const [mostrarModalKit, setMostrarModalKit] = useState(false);
+  const [nombreKit, setNombreKit] = useState('');
+  const [descripcionKit, setDescripcionKit] = useState('');
 
-  // Función para procesar el guardado de un nuevo equipo en el estado reactivo
-  const handleGuardarEquipo = (e) => {
-    e.preventDefault();
-    const nuevoEquipoObj = {
-      id: Date.now(),
-      nombre: nuevoNombre,
-      tipo: nuevoTipo,
-      serie: nuevaSerie,
-      estado: 'Disponible',
-      kits: [],
-      valorReposicion: Number(nuevoValor) || 0,
-    };
+  // 1. Cargar datos desde la base de datos (Neon / PostgreSQL)
+  const cargarDatos = async () => {
+    try {
+      setCargandoInventario(true);
+      const { equipos: dataEquipos, kits: dataKits } = await consultarInventario();
 
-    setEquipos([nuevoEquipoObj, ...equipos]);
-    setMostrarModalNuevo(false);
-    
-    // Limpiar formulario
-    setNuevoNombre('');
-    setNuevaSerie('');
-    setNuevoValor('');
-    setNuevoTipo('Cámara');
+      setEquipos(dataEquipos);
+      setKits(dataKits);
+      setErrorInventario(null);
+    } catch (err) {
+      setErrorInventario(err.message);
+    } finally {
+      setCargandoInventario(false);
+    }
   };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    consultarInventario(controller.signal)
+      .then(({ equipos, kits }) => {
+        setEquipos(equipos);
+        setKits(kits);
+        setErrorInventario(null);
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') setErrorInventario(err.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCargandoInventario(false);
+      });
+    return () => controller.abort();
+  }, []);
+
+  // 2. Guardar un nuevo equipo en el Backend (POST real RF9)
+  const handleGuardarEquipo = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(API_EQUIPOS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: nuevoNombre,
+          tipo: nuevoTipo,
+          serie: nuevaSerie,
+          estado: 'Disponible',
+          valorReposicion: Number(nuevoValor) || 0,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Error al guardar el equipo');
+
+      setMostrarModalEquipo(false);
+      setNuevoNombre('');
+      setNuevaSerie('');
+      setNuevoValor('');
+      setNuevoTipo('Cámara');
+      await cargarDatos();
+    } catch (err) {
+      alert(`⚠️ ${err.message}`);
+    }
+  };
+
+  // 3. Guardar un nuevo Kit en el Backend (POST real RF7)
+  const handleGuardarKit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(API_KITS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: nombreKit,
+          descripcion: descripcionKit,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Error al registrar el kit');
+
+      setMostrarModalKit(false);
+      setNombreKit('');
+      setDescripcionKit('');
+      await cargarDatos();
+    } catch (err) {
+      alert(`⚠️ ${err.message}`);
+    }
+  };
+
+  // 4. Cambiar estado a 'Dado de Baja' en Backend (PATCH real RF13)
+  const handleDarDeBaja = async (id) => {
+    try {
+      const res = await fetch(`${API_EQUIPOS_URL}/${id}/estado`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'Dado de Baja' }),
+      });
+
+      if (!res.ok) throw new Error('No se pudo dar de baja el equipo');
+      await cargarDatos();
+    } catch (err) {
+      alert(`⚠️ ${err.message}`);
+    }
+  };
+
+  // 5. Vincular / Desvincular equipo a un kit (PATCH real RF7)
+  const handleAsignarKit = async (equipoId, kitId) => {
+    try {
+      const res = await fetch(`${API_EQUIPOS_URL}/${equipoId}/kit`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kitId: kitId ? Number(kitId) : null }),
+      });
+
+      if (!res.ok) throw new Error('No se pudo actualizar la asignación del kit');
+      await cargarDatos();
+    } catch (err) {
+      alert(`⚠️ ${err.message}`);
+    }
+  };
+
+  const equiposDeBaja = equipos.filter((e) => e.estado === 'Dado de Baja');
+  const perdidaTotal = equiposDeBaja.reduce((total, e) => total + (Number(e.valorReposicion) || 0), 0);
 
   const obtenerClasesBadge = (estado) => {
     switch (estado) {
@@ -74,14 +172,19 @@ export default function InventarioPage() {
       <div className="flex justify-between items-center border-b border-[#1e293b] pb-6">
         <div>
           <h1 className="text-[30px] font-[700] text-[#f8fafc] m-0 tracking-tight">Inventario</h1>
-          <p className="text-[14px] font-[400] text-[#94a3b8] mt-1.5">{equipos.length} equipos registrados · Consulta los kits en su pestaña</p>
+          <p className="text-[14px] font-[400] text-[#94a3b8] mt-1.5">
+            {equipos.length} equipos registrados · {kits.length} kits configurados
+          </p>
         </div>
         <div className="flex gap-3">
-          <button onClick={() => setTabActiva('kits')} className="px-4 py-2.5 bg-[#2563eb] text-[#f8fafc] border-none rounded-lg cursor-pointer font-semibold text-[13px] hover:bg-[#1d4ed8] transition-colors">
-            + Nuevo Kit
+          <button 
+            onClick={() => { setTabActiva('kits'); setMostrarModalKit(true); }}
+            className="px-4 py-2.5 bg-[#2563eb] text-[#f8fafc] border-none rounded-lg cursor-pointer font-semibold text-[13px] hover:bg-[#1d4ed8] transition-colors"
+          >
+            + Nuevo Kit de equipos
           </button>
           <button 
-            onClick={() => setMostrarModalNuevo(true)}
+            onClick={() => setMostrarModalEquipo(true)}
             className="px-4 py-2.5 bg-[#0f172a] text-[#f8fafc] border border-[#334155] rounded-lg cursor-pointer font-semibold text-[13px] hover:bg-[#1e293b] transition-colors"
           >
             + Nuevo Equipo
@@ -89,44 +192,44 @@ export default function InventarioPage() {
         </div>
       </div>
 
-      {/* Tarjetas resumen */}
+      {/* Tarjetas resumen de métricas */}
       <div className="grid grid-cols-4 gap-4 my-7">
         <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
           <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">Disponibles</span>
           <p className="text-[30px] font-bold text-[#4ade80] mt-2.5 mb-0">
-            {equipos.filter(e => e.estado === 'Disponible').length}
+            {equipos.filter((e) => e.estado === 'Disponible').length}
           </p>
         </div>
         <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
           <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">En Uso</span>
           <p className="text-[30px] font-bold text-[#3b82f6] mt-2.5 mb-0">
-            {equipos.filter(e => e.estado === 'En Uso').length}
+            {equipos.filter((e) => e.estado === 'En Uso').length}
           </p>
         </div>
         <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
           <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">Dañados</span>
           <p className="text-[30px] font-bold text-[#fbbf24] mt-2.5 mb-0">
-            {equipos.filter(e => e.estado === 'Dañado').length}
+            {equipos.filter((e) => e.estado === 'Dañado').length}
           </p>
         </div>
         <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
           <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">Perdidos</span>
           <p className="text-[30px] font-bold text-[#f87171] mt-2.5 mb-0">
-            {equipos.filter(e => e.estado === 'Perdido').length}
+            {equipos.filter((e) => e.estado === 'Perdido').length}
           </p>
         </div>
       </div>
 
-      {/* Subnavegación de Tabs */}
+      {/* Navegación por pestañas */}
       <div className="flex gap-2 mb-5">
         {[
-          { id: 'kits', label: 'Kits' },
+          { id: 'kits', label: 'Kits de equipos — Inventario' },
+          { id: 'kits-eventos', label: 'Kits para eventos — RF5' },
           { id: 'equipos', label: 'Todos los Equipos' },
           { id: 'bajas', label: 'Dados de Baja' },
         ].map((tab) => {
           const activo = tabActiva === tab.id;
           let clasesTab = 'px-4 py-2 rounded-lg text-[13px] font-semibold cursor-pointer transition-colors border ';
-          
           if (activo) {
             clasesTab += tab.id === 'bajas' 
               ? 'bg-[#f87171]/20 text-[#f87171] border-[#f87171]' 
@@ -134,7 +237,6 @@ export default function InventarioPage() {
           } else {
             clasesTab += 'bg-[#0f172a] text-[#94a3b8] border-transparent hover:text-[#f8fafc]';
           }
-
           return (
             <button key={tab.id} onClick={() => setTabActiva(tab.id)} className={clasesTab}>
               {tab.label}
@@ -143,8 +245,55 @@ export default function InventarioPage() {
         })}
       </div>
 
+      {tabActiva !== 'kits-eventos' && cargandoInventario && <p className="text-[#94a3b8]">Sincronizando con PostgreSQL (Neon)...</p>}
+      {tabActiva !== 'kits-eventos' && errorInventario && <p role="alert" className="text-[#f87171]">⚠️ Error de conexión: {errorInventario}</p>}
+
+      {/* Vista de Kits */}
+      {!cargandoInventario && !errorInventario && tabActiva === 'kits' && (
+        <div className="space-y-6">
+          {kits.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {kits.map((kit) => (
+                <div key={kit.id} className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5 hover:border-[#2563eb]/50 transition-colors">
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="font-bold text-[16px] text-[#f8fafc] m-0">{kit.nombre}</h3>
+                    <span className="text-[11px] bg-[#1e293b] text-[#38bdf8] px-2 py-0.5 rounded border border-[#334155]">
+                      {kit.equipos ? kit.equipos.length : 0} equipos
+                    </span>
+                  </div>
+                  <p className="text-[13px] text-[#94a3b8] mb-4 min-h-[38px] line-clamp-2">
+                    {kit.descripcion || 'Sin descripción asignada.'}
+                  </p>
+                  
+                  <div className="border-t border-[#1e293b] pt-3 mt-2">
+                    <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block mb-2">Equipos incluidos:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {kit.equipos && kit.equipos.length > 0 ? (
+                        kit.equipos.map((eq) => (
+                          <span key={eq.id} className="bg-[#0b1120] text-[#cbd5e1] text-[11px] px-2 py-1 rounded border border-[#334155]">
+                            {eq.nombre}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[12px] text-[#64748b] italic">Sin equipos vinculados</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-6 text-[#94a3b8]">
+              No hay kits de equipos registrados en Inventario.
+            </div>
+          )}
+        </div>
+      )}
+
+      {tabActiva === 'kits-eventos' && <KitsPanel />}
+
       {/* Tabla de Todos los Equipos */}
-      {tabActiva === 'equipos' && (
+      {!cargandoInventario && !errorInventario && tabActiva === 'equipos' && (
         <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl overflow-hidden">
           <table className="w-full border-collapse text-left text-[13px]">
             <thead className="bg-[#0b1120] text-[#64748b] border-b border-[#1e293b]">
@@ -153,38 +302,47 @@ export default function InventarioPage() {
                 <th className="py-3.5 px-5 font-semibold">Tipo</th>
                 <th className="py-3.5 px-5 font-semibold">Serie</th>
                 <th className="py-3.5 px-5 font-semibold">Estado</th>
-                <th className="py-3.5 px-5 font-semibold">Kits</th>
+                <th className="py-3.5 px-5 font-semibold">Kit Asignado</th>
+                <th className="py-3.5 px-5 font-semibold">Valor Reposición</th>
                 <th className="py-3.5 px-5 font-semibold text-right">Acción</th>
               </tr>
             </thead>
             <tbody>
-              {equipos.filter(e => e.estado !== 'Dado de Baja').map((item) => (
+              {equipos.filter((e) => e.estado !== 'Dado de Baja').map((item) => (
                 <tr key={item.id} className="border-b border-[#1e293b] hover:bg-[#1e293b]/40 transition-colors">
                   <td className="py-3.5 px-5 font-medium text-[#f8fafc]">{item.nombre}</td>
                   <td className="py-3.5 px-5 text-[#94a3b8]">{item.tipo}</td>
-                  <td className="py-3.5 px-5 text-[#64748b] font-mono">{item.serie}</td>
+                  <td className="py-3.5 px-5 text-[#64748b] font-mono">{item.serie || 'N/A'}</td>
                   <td className="py-3.5 px-5">
                     <span className={`px-2.5 py-1 rounded-full text-[12px] font-semibold ${obtenerClasesBadge(item.estado)}`}>
                       {item.estado}
                     </span>
                   </td>
+                  {/* Desplegable para seleccionar Kit (RF7) */}
                   <td className="py-3.5 px-5">
-                    <div className="flex gap-1.5 flex-wrap">
-                      {item.kits.length > 0 ? (
-                        item.kits.map((k, idx) => (
-                          <span key={idx} className="bg-[#0b1120] text-[#94a3b8] text-[11px] px-2 py-0.5 rounded border border-[#334155]">{k}</span>
-                        ))
-                      ) : (
-                        <span className="text-[#64748b]">—</span>
-                      )}
-                    </div>
+                    <select
+                      value={item.kitId || ''}
+                      onChange={(e) => handleAsignarKit(item.id, e.target.value)}
+                      className="bg-[#0b1120] text-[#38bdf8] border border-[#334155] rounded px-2 py-1 text-xs focus:outline-none focus:border-[#2563eb]"
+                    >
+                      <option value="">— Sin Kit —</option>
+                      {kits.map((k) => (
+                        <option key={k.id} value={k.id}>
+                          {k.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="py-3.5 px-5 text-[#94a3b8]">
+                    ${Number(item.valorReposicion || 0).toLocaleString('es-CL')}
                   </td>
                   <td className="py-3.5 px-5 text-right">
-                    {(item.estado === 'Dañado' || item.estado === 'Perdido') && (
-                      <button className="px-3 py-1.5 text-[12px] font-semibold text-[#f87171] bg-[#f87171]/10 border border-[#f87171]/30 rounded-md cursor-pointer hover:bg-[#f87171]/20 transition-colors">
-                        Dar de baja
-                      </button>
-                    )}
+                    <button 
+                      onClick={() => handleDarDeBaja(item.id)}
+                      className="px-3 py-1.5 text-[12px] font-semibold text-[#f87171] bg-[#f87171]/10 border border-[#f87171]/30 rounded-md cursor-pointer hover:bg-[#f87171]/20 transition-colors"
+                    >
+                      Dar de baja
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -194,7 +352,7 @@ export default function InventarioPage() {
       )}
 
       {/* Vista Dados de Baja (RF13 - Consolidado Financiero de Mermas) */}
-      {tabActiva === 'bajas' && (
+      {!cargandoInventario && !errorInventario && tabActiva === 'bajas' && (
         <div className="space-y-6">
           {equiposDeBaja.length > 0 && (
              <div className="bg-[#f87171]/10 border border-[#f87171]/30 rounded-xl p-6 flex justify-between items-center">
@@ -232,10 +390,10 @@ export default function InventarioPage() {
                       <td className="py-3.5 px-5 font-medium text-[#f8fafc] line-through decoration-[#64748b]">
                         {item.nombre} <span className="text-[#94a3b8] no-underline ml-2">({item.tipo})</span>
                       </td>
-                      <td className="py-3.5 px-5 text-[#64748b] font-mono">{item.serie}</td>
-                      <td className="py-3.5 px-5 text-[#94a3b8] italic">"{item.motivo}"</td>
+                      <td className="py-3.5 px-5 text-[#64748b] font-mono">{item.serie || 'N/A'}</td>
+                      <td className="py-3.5 px-5 text-[#94a3b8] italic">{item.motivo ? `"${item.motivo}"` : '—'}</td>
                       <td className="py-3.5 px-5 text-right font-bold text-[#f87171]">
-                        ${item.valorReposicion?.toLocaleString('es-CL') || 0}
+                        ${Number(item.valorReposicion || 0).toLocaleString('es-CL')}
                       </td>
                     </tr>
                   ))}
@@ -246,44 +404,73 @@ export default function InventarioPage() {
         </div>
       )}
 
-      {/* Vista Kits */}
-      {tabActiva === 'kits' && (
-        <KitsPanel />
+      {/* Modal interactivo de Nuevo Kit (RF7) */}
+      {mostrarModalKit && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl w-full max-w-md p-6 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-[#1e293b] pb-4 mb-4">
+              <h3 className="text-lg font-bold text-[#f8fafc] m-0">Crear kit de equipos — Inventario</h3>
+              <button onClick={() => setMostrarModalKit(false)} className="text-[#64748b] hover:text-[#f8fafc] bg-transparent border-none text-lg cursor-pointer">✕</button>
+            </div>
+            <form onSubmit={handleGuardarKit} className="space-y-4">
+              <div>
+                <label htmlFor="nombre-kit-inventario" className="block text-xs font-semibold text-[#94a3b8] mb-1">Nombre del kit de equipos</label>
+                <input 
+                  type="text" 
+                  required 
+                  id="nombre-kit-inventario"
+                  value={nombreKit} 
+                  onChange={(e) => setNombreKit(e.target.value)} 
+                  placeholder="Ej. Kit Transmisión Fútbol" 
+                  className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]" 
+                />
+              </div>
+              <div>
+                <label htmlFor="descripcion-kit-inventario" className="block text-xs font-semibold text-[#94a3b8] mb-1">Descripción</label>
+                <textarea 
+                  rows="3" 
+                  id="descripcion-kit-inventario"
+                  value={descripcionKit} 
+                  onChange={(e) => setDescripcionKit(e.target.value)} 
+                  placeholder="Detalle de los requerimientos de este kit..." 
+                  className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]" 
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#1e293b]">
+                <button type="button" onClick={() => setMostrarModalKit(false)} className="px-4 py-2 bg-[#1e293b] text-[#94a3b8] rounded-lg text-xs font-semibold border border-transparent">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-[#2563eb] text-[#f8fafc] rounded-lg text-xs font-semibold border-none cursor-pointer hover:bg-[#1d4ed8]">Guardar Kit</button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Modal interactivo de Registro de Nuevo Equipo (RF9) */}
-      {mostrarModalNuevo && (
+      {mostrarModalEquipo && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl w-full max-w-md p-6 shadow-2xl">
             <div className="flex justify-between items-center border-b border-[#1e293b] pb-4 mb-4">
               <h3 className="text-lg font-bold text-[#f8fafc] m-0">Registrar Nuevo Equipo</h3>
-              <button 
-                onClick={() => setMostrarModalNuevo(false)}
-                className="text-[#64748b] hover:text-[#f8fafc] bg-transparent border-none text-lg cursor-pointer"
-              >
-                ✕
-              </button>
+              <button onClick={() => setMostrarModalEquipo(false)} className="text-[#64748b] hover:text-[#f8fafc] bg-transparent border-none text-lg cursor-pointer">✕</button>
             </div>
-
             <form onSubmit={handleGuardarEquipo} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Nombre del Equipo</label>
                 <input 
                   type="text" 
                   required 
-                  value={nuevoNombre}
-                  onChange={(e) => setNuevoNombre(e.target.value)}
+                  value={nuevoNombre} 
+                  onChange={(e) => setNuevoNombre(e.target.value)} 
                   placeholder="Ej. Cámara Sony A7IV" 
                   className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]" 
                 />
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Categoría/Tipo</label>
                   <select 
-                    value={nuevoTipo}
-                    onChange={(e) => setNuevoTipo(e.target.value)}
+                    value={nuevoTipo} 
+                    onChange={(e) => setNuevoTipo(e.target.value)} 
                     className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]"
                   >
                     <option>Cámara</option>
@@ -299,40 +486,27 @@ export default function InventarioPage() {
                   <input 
                     type="text" 
                     required 
-                    value={nuevaSerie}
-                    onChange={(e) => setNuevaSerie(e.target.value)}
+                    value={nuevaSerie} 
+                    onChange={(e) => setNuevaSerie(e.target.value)} 
                     placeholder="SN-000-XXX" 
                     className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]" 
                   />
                 </div>
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Valor de Reposición (CLP)</label>
                 <input 
                   type="number" 
                   required 
-                  value={nuevoValor}
-                  onChange={(e) => setNuevoValor(e.target.value)}
+                  value={nuevoValor} 
+                  onChange={(e) => setNuevoValor(e.target.value)} 
                   placeholder="1500000" 
                   className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]" 
                 />
               </div>
-
               <div className="flex justify-end gap-3 pt-4 border-t border-[#1e293b]">
-                <button 
-                  type="button" 
-                  onClick={() => setMostrarModalNuevo(false)}
-                  className="px-4 py-2 bg-[#1e293b] text-[#94a3b8] rounded-lg text-xs font-semibold hover:text-[#f8fafc] transition-colors border border-transparent"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-4 py-2 bg-[#2563eb] text-[#f8fafc] rounded-lg text-xs font-semibold hover:bg-[#1d4ed8] transition-colors border-none cursor-pointer"
-                >
-                  Guardar Equipo
-                </button>
+                <button type="button" onClick={() => setMostrarModalEquipo(false)} className="px-4 py-2 bg-[#1e293b] text-[#94a3b8] rounded-lg text-xs font-semibold border border-transparent">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-[#2563eb] text-[#f8fafc] rounded-lg text-xs font-semibold border-none cursor-pointer hover:bg-[#1d4ed8]">Guardar Equipo</button>
               </div>
             </form>
           </div>

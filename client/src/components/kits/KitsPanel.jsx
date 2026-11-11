@@ -30,8 +30,8 @@ export default function KitsPanel() {
   }
   return <div className="kits-rf5">
     <section className="kits-panel" aria-busy={ocupado}>
-      <h2>Kits físicos</h2>
-      <p>Un kit puede ocupar un solo evento pendiente o en curso. Al finalizar, vuelve a estar disponible y conserva su asignación histórica.</p>
+      <h2>Kits para eventos — RF5</h2>
+      <p>Estos recursos son independientes de los kits de equipos de Inventario. Un kit puede ocupar un solo evento pendiente o en curso. Al finalizar, vuelve a estar disponible y conserva su asignación histórica.</p>
       {error && <p role="alert" className="kits-error">{error}</p>}
       {mensaje && <p role="status" className="kits-exito">{mensaje}</p>}
       <button type="button" disabled={ocupado} onClick={() => { setError(''); refrescar(); }}>Actualizar catálogo</button>
@@ -45,11 +45,11 @@ export default function KitsPanel() {
         await api('/kits', { method: 'POST', body: { nombre: nombre.trim(), premium } });
         setNombre(''); setPremium(false); setMensaje('Kit registrado.');
       })}>
-        <h3>Registrar kit</h3>
-        <label htmlFor="nombre-kit">Nombre del kit físico</label>
+        <h3>Registrar kit para eventos</h3>
+        <label htmlFor="nombre-kit">Nombre del kit para eventos</label>
         <input id="nombre-kit" required value={nombre} disabled={ocupado} onChange={e => setNombre(e.target.value)} />
         <label className="kits-checkbox"><input type="checkbox" checked={premium} disabled={ocupado} onChange={e => setPremium(e.target.checked)} />Kit Premium</label>
-        <button disabled={ocupado || !nombre.trim()}>Registrar kit</button>
+        <button disabled={ocupado || !nombre.trim()}>Registrar kit para eventos</button>
       </form>
     </section>
     <section className="kits-panel">

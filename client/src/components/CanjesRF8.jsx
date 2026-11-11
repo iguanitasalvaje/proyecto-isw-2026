@@ -49,6 +49,17 @@ export default function CanjesRF8() {
     return () => { activo = false; };
   }, [eventoId, recarga]);
 
+useEffect(() => {
+  if (!error && !aviso) return;
+
+  const temporizador = setTimeout(() => {
+    setError('');
+    setAviso('');
+  }, 5000);
+
+  return () => clearTimeout(temporizador);
+}, [error, aviso]);
+
   async function crearAuspiciador(evento) {
     evento.preventDefault();
     setAviso('');
