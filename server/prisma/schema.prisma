@@ -9,6 +9,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==========================================
+// MODELOS DE INVENTARIO Y KITS
+// ==========================================
 model Kit {
   id          Int       @id @default(autoincrement())
   nombre      String    @db.VarChar(100)
@@ -44,4 +47,47 @@ model LogAutorizacion {
   fecha          DateTime @default(now())
 
   @@map("log_autorizaciones")
+}
+
+// ==========================================
+// MODELOS DE OPERACIÓN (RF2: Eventos y RF4: Personal)
+// ==========================================
+model EventoPrisma {
+  id                String   @id @default(uuid())
+  nombre            String   @db.Text
+  cliente           String?  @db.Text
+  precioBase        Float    @default(0) // Soporte para RF2 (Precio Base obligatorio > 0)
+  fecha             DateTime?
+  lugar             String?  @db.Text
+  personalRequerido String?  @db.Text // Soporte para RF2 (cantidad/detalle de personal técnico)
+  estado            String   @default("Agendado") // Postcondición RF2: Estado inicial "Agendado"
+  createdAt         DateTime @default(now())
+
+  asignaciones      AsignacionPersonal[]
+
+  @@map("eventos_operacion")
+}
+
+model PersonaPrisma {
+  id          String   @id @default(uuid())
+  nombre      String   @db.Text
+  telefono    String?  @db.Text // Atributo obligatorio requerido por RF4
+  cargo       String?  @db.Text // Especialidad/cargo requerido por RF4
+  tarifa      Float    @default(0) // Tarifa del trabajador requerida por RF4
+  disponible  Boolean  @default(true)
+
+  asignaciones AsignacionPersonal[]
+
+  @@map("personas_operacion")
+}
+
+model AsignacionPersonal {
+  id         String        @id @default(uuid())
+  eventoId   String
+  evento     EventoPrisma  @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  personaId  String
+  persona    PersonaPrisma @relation(fields: [personaId], references: [id], onDelete: Cascade)
+
+  @@unique([eventoId, personaId])
+  @@map("asignaciones_personal")
 }

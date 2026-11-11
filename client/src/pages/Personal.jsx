@@ -19,7 +19,7 @@ const Personal = () => {
   const [nuevaTarifa, setNuevaTarifa] = useState('');
   const [guardando, setGuardando] = useState(false);
 
-  // Cargar datos reales desde PostgreSQL (Neon)
+  // Cargar datos reales 
   const cargarDatos = async () => {
     try {
       setCargando(true);
@@ -38,7 +38,7 @@ const Personal = () => {
       }
     } catch (err) {
       console.error('Error al cargar datos en Personal:', err);
-      setError(err.message || 'Error al conectar con la base de datos Neon');
+      setError(err.message || 'Error al conectar con la base de datos ');
     } finally {
       setCargando(false);
     }
@@ -48,29 +48,29 @@ const Personal = () => {
     cargarDatos();
   }, []);
 
-  // --- ACCIÓN FINAL DE VINCULACIÓN (RF4) ---
-  // Registra la relación entre la Persona y el Evento activo en Neon
+// --- ACCIÓN FINAL DE VINCULACIÓN (RF4) ---
   const handleVincularEvento = async (personaId, eventoId) => {
     if (!eventoId) return;
 
     try {
-      // Buscar la persona para obtener su rol asignado por defecto
       const persona = trabajadores.find(p => p.id === personaId);
-      const rolDefecto = roles[0]?.id; // O el rol de la persona
+      const rolDefecto = roles.length > 0 ? roles[0].id : null;
 
-      // Petición POST a PostgreSQL
+      // Petición POST al backend enviando personaId y porcentajeCentesimas inicial en 0
       await api(`/eventos/${eventoId}/asignaciones`, {
         method: 'POST',
         body: {
           personaId: personaId,
-          rolId: persona?.rolId || rolDefecto,
+          rolId: rolDefecto,
+          porcentajeCentesimas: 0 // 0 centésimas (0%) por defecto para cumplir con la BD
         }
       });
 
       alert(`✅ ${persona ? persona.nombre : 'Trabajador'} asignado exitosamente al evento.`);
-      await cargarDatos(); // Refresca disponibilidades en Neon
+      await cargarDatos(); // Refresca las listas
     } catch (err) {
-      alert(`⚠️ ${err.message || 'No se pudo vincular la persona al evento. Revisa si ya está asignada.'}`);
+      console.error('Error al vincular personal:', err);
+      alert(`⚠️ ${err.message || 'No se pudo vincular la persona al evento.'}`);
     }
   };
 
@@ -122,7 +122,7 @@ const Personal = () => {
         </button>
       </div>
 
-      {cargando && <p className="text-slate-400 text-sm mb-4">Cargando personal técnico desde Neon PostgreSQL...</p>}
+      {cargando && <p className="text-slate-400 text-sm mb-4">Cargando personal técnico...</p>}
       {error && (
         <div className="bg-red-950/60 border border-red-800 text-red-200 p-4 rounded-lg mb-6 text-sm flex justify-between items-center">
           <span>⚠️ {error}</span>
@@ -247,7 +247,7 @@ const Personal = () => {
                   disabled={guardando}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg disabled:opacity-50"
                 >
-                  {guardando ? 'Guardando...' : 'Guardar en Neon'}
+                  {guardando ? 'Guardando...' : 'Guardar'}
                 </button>
               </div>
             </form>
