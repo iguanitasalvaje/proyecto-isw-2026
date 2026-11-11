@@ -1,18 +1,37 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend API para proyecto ISW",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "node --test tests/liquidacion.test.js tests/recargoPremium.test.js tests/rf8.test.js tests/rf14.test.js tests/rf1.unit.test.js tests/rf1Routes.test.js tests/db.unit.test.js",
+    "test:rf1": "node --test tests/rf1.unit.test.js tests/rf1Routes.test.js",
+    "test:rf8": "node --test tests/rf8.test.js",
+    "test:db": "node --test tests/db.unit.test.js",
+    "db:migrate": "node db/migrate.js",
+    "db:check": "node db/check.js",
+    "db:crear-dueno": "node scripts/crearDueno.js",
+    "test:integration": "node -r dotenv/config --test tests/persistencia.integration.test.js dotenv_config_quiet=true",
+    "test:migration": "node -r dotenv/config --test tests/migracion002.integration.test.js dotenv_config_quiet=true",
+    "test:http": "node -r dotenv/config --test tests/http.integration.test.js dotenv_config_quiet=true",
+    "test:rf5:integration": "node -r dotenv/config --test tests/rf5.integration.test.js dotenv_config_quiet=true",
+    "test:rf5:http": "node -r dotenv/config --test tests/rf5.http.test.js dotenv_config_quiet=true"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^18.0.4",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.1"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   }
 }

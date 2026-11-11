@@ -1,5 +1,5 @@
 // client/src/pages/FinanzasPage.jsx
-import React from 'react';
+import EconomiaEventos from '../components/kits/EconomiaEventos';
 
 const GASTOS_CATEGORIA = [
   { nombre: 'Sueldos', porcentaje: '76.0%', monto: '$965.000', color: '#a855f7' },
@@ -46,6 +46,8 @@ export default function FinanzasPage() {
         <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0, color: '#ffffff' }}>Finanzas</h1>
         <p style={{ fontSize: '14px', color: '#64748b', marginTop: '6px' }}>Resumen financiero consolidado</p>
       </div>
+
+      <EconomiaEventos />
 
       {/* Tarjetas resumen */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '28px' }}>

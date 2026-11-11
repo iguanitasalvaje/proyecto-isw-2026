@@ -1,148 +1,334 @@
-import React, { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
+import KitsPanel from '../components/kits/KitsPanel';
+import { api } from '../services/api';
 
-const EQUIPOS_INICIALES = [
-  { id: 1, nombre: 'Sony FX3 #1', tipo: 'Cámara', serie: 'SN-FX3-001', estado: 'Disponible', kits: ['Fútbol', 'Corporativo'] },
-  { id: 2, nombre: 'Sony FX3 #2', tipo: 'Cámara', serie: 'SN-FX3-002', estado: 'En Uso', kits: ['Fútbol'] },
-  { id: 3, nombre: 'Canon C70 #1', tipo: 'Cámara', serie: 'CN-C70-001', estado: 'Disponible', kits: ['Fútbol', 'Graduación'] },
-  { id: 4, nombre: 'Trípode Manfrotto #1', tipo: 'Trípode', serie: 'MF-T100-001', estado: 'Disponible', kits: ['Fútbol', 'Graduación'] },
-  { id: 5, nombre: 'Trípode Manfrotto #2', tipo: 'Trípode', serie: 'MF-T100-002', estado: 'Dañado', kits: [] },
-  { id: 6, nombre: 'Cable HDMI 15m #2', tipo: 'Cable', serie: 'HDMI-15-002', estado: 'Perdido', kits: [] },
-  { id: 7, nombre: 'Mezcladora Blackmagic ATEM Mini', tipo: 'Switch', serie: 'BM-AM-001', estado: 'Disponible', kits: ['Fútbol', 'Corporativo'] },
-];
+async function consultarInventario(signal) {
+  const [equipos, kits] = await Promise.all([
+    api('/inventario/equipos', { signal }),
+    api('/kits', { signal }),
+  ]);
+  return { equipos, kits };
+}
 
 export default function InventarioPage() {
   const [tabActiva, setTabActiva] = useState('equipos');
+  const [equipos, setEquipos] = useState([]);
+  const [kits, setKits] = useState([]);
+  const [cargandoInventario, setCargandoInventario] = useState(true);
+  const [errorInventario, setErrorInventario] = useState(null);
 
-  const obtenerEstiloBadge = (estado) => {
+  // Estados para Modal Nuevo Equipo (RF9)
+  const [mostrarModalEquipo, setMostrarModalEquipo] = useState(false);
+  const [nuevoNombre, setNuevoNombre] = useState('');
+  const [nuevoTipo, setNuevoTipo] = useState('Cámara');
+  const [nuevaSerie, setNuevaSerie] = useState('');
+  const [nuevoValor, setNuevoValor] = useState('');
+
+  // Estados para Modal Nuevo Kit (RF7)
+  const [mostrarModalKit, setMostrarModalKit] = useState(false);
+  const [nombreKit, setNombreKit] = useState('');
+  const [descripcionKit, setDescripcionKit] = useState('');
+
+  // 1. Cargar datos desde la base de datos (PostgreSQL)
+  const cargarDatos = async () => {
+    try {
+      setCargandoInventario(true);
+      const { equipos: dataEquipos, kits: dataKits } = await consultarInventario();
+
+      setEquipos(dataEquipos);
+      setKits(dataKits);
+      setErrorInventario(null);
+    } catch (err) {
+      setErrorInventario(err.message);
+    } finally {
+      setCargandoInventario(false);
+    }
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    consultarInventario(controller.signal)
+      .then(({ equipos, kits }) => {
+        setEquipos(equipos);
+        setKits(kits);
+        setErrorInventario(null);
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') setErrorInventario(err.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCargandoInventario(false);
+      });
+    return () => controller.abort();
+  }, []);
+
+  // 2. Guardar un nuevo equipo en el Backend (POST real RF9)
+  const handleGuardarEquipo = async (e) => {
+    e.preventDefault();
+    try {
+      await api('/inventario/equipos', {
+        method: 'POST',
+        body: {
+          nombre: nuevoNombre,
+          tipo: nuevoTipo,
+          serie: nuevaSerie,
+          estado: 'Disponible',
+          valorReposicion: Number(nuevoValor) || 0,
+        },
+      });
+
+      setMostrarModalEquipo(false);
+      setNuevoNombre('');
+      setNuevaSerie('');
+      setNuevoValor('');
+      setNuevoTipo('Cámara');
+      await cargarDatos();
+    } catch (err) {
+      alert(`⚠️ ${err.message}`);
+    }
+  };
+
+  // 3. Guardar un nuevo Kit en el Backend (POST real RF7)
+  const handleGuardarKit = async (e) => {
+    e.preventDefault();
+    try {
+      await api('/kits', {
+        method: 'POST',
+        body: {
+          nombre: nombreKit,
+          descripcion: descripcionKit,
+        },
+      });
+
+      setMostrarModalKit(false);
+      setNombreKit('');
+      setDescripcionKit('');
+      await cargarDatos();
+    } catch (err) {
+      alert(`⚠️ ${err.message}`);
+    }
+  };
+
+  // 4. Cambiar estado a 'Dado de Baja' en Backend (PATCH real RF13)
+  const handleDarDeBaja = async (id) => {
+    try {
+      await api(`/inventario/equipos/${id}/estado`, {
+        method: 'PATCH',
+        body: { estado: 'Dado de Baja' },
+      });
+
+      await cargarDatos();
+    } catch (err) {
+      alert(`⚠️ ${err.message}`);
+    }
+  };
+
+  // 5. Vincular / Desvincular equipo a un kit (PATCH real RF7)
+  const handleAsignarKit = async (equipoId, kitId) => {
+    try {
+      await api(`/inventario/equipos/${equipoId}/kit`, {
+        method: 'PATCH',
+        body: { kitId: kitId ? Number(kitId) : null },
+      });
+
+      await cargarDatos();
+    } catch (err) {
+      alert(`⚠️ ${err.message}`);
+    }
+  };
+
+  const equiposDeBaja = equipos.filter((e) => e.estado === 'Dado de Baja');
+  const perdidaTotal = equiposDeBaja.reduce((total, e) => total + (Number(e.valorReposicion) || 0), 0);
+
+  const obtenerClasesBadge = (estado) => {
     switch (estado) {
-      case 'Disponible':
-        return { color: '#4ade80', background: 'rgba(74, 222, 128, 0.1)', border: '1px solid rgba(74, 222, 128, 0.25)' };
-      case 'En Uso':
-        return { color: '#60a5fa', background: 'rgba(96, 165, 250, 0.1)', border: '1px solid rgba(96, 165, 250, 0.25)' };
-      case 'Dañado':
-        return { color: '#fbbf24', background: 'rgba(251, 191, 36, 0.1)', border: '1px solid rgba(251, 191, 36, 0.25)' };
-      case 'Perdido':
-        return { color: '#f87171', background: 'rgba(248, 113, 113, 0.1)', border: '1px solid rgba(248, 113, 113, 0.25)' };
-      default:
-        return { color: '#94a3b8', background: '#1e293b' };
+      case 'Disponible': return 'text-[#4ade80] bg-[#4ade80]/10 border border-[#4ade80]/25';
+      case 'En Uso': return 'text-[#3b82f6] bg-[#3b82f6]/10 border border-[#3b82f6]/25';
+      case 'Dañado': return 'text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/25';
+      case 'Perdido': return 'text-[#f87171] bg-[#f87171]/10 border border-[#f87171]/25';
+      case 'Dado de Baja': return 'text-[#64748b] bg-[#1e293b] border border-[#334155]';
+      default: return 'text-[#94a3b8] bg-[#1e293b]';
     }
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#090d16', color: '#f8fafc', padding: '32px 48px', boxSizing: 'border-box', fontFamily: 'system-ui, sans-serif' }}>
-      
+    <div className="min-h-screen bg-[#090d16] text-[#f8fafc] p-8 font-sans box-border">
+
       {/* Encabezado */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1e293b', paddingBottom: '24px' }}>
+      <div className="flex justify-between items-center border-b border-[#1e293b] pb-6">
         <div>
-          <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0, color: '#ffffff' }}>Inventario</h1>
-          <p style={{ fontSize: '14px', color: '#64748b', marginTop: '6px' }}>14 equipos registrados · 4 kits configurados</p>
+          <h1 className="text-[30px] font-[700] text-[#f8fafc] m-0 tracking-tight">Inventario</h1>
+          <p className="text-[14px] font-[400] text-[#94a3b8] mt-1.5">
+            {equipos.length} equipos registrados · {kits.length} kits configurados
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button style={{ padding: '9px 18px', background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>
-            + Nuevo Kit
+        <div className="flex gap-3">
+          <button
+            onClick={() => { setTabActiva('kits'); setMostrarModalKit(true); }}
+            className="px-4 py-2.5 bg-[#2563eb] text-[#f8fafc] border-none rounded-lg cursor-pointer font-semibold text-[13px] hover:bg-[#1d4ed8] transition-colors"
+          >
+            + Nuevo Kit de equipos
           </button>
-          <button style={{ padding: '9px 18px', background: '#1e293b', color: '#f8fafc', border: '1px solid #334155', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}>
+          <button
+            onClick={() => setMostrarModalEquipo(true)}
+            className="px-4 py-2.5 bg-[#0f172a] text-[#f8fafc] border border-[#334155] rounded-lg cursor-pointer font-semibold text-[13px] hover:bg-[#1e293b] transition-colors"
+          >
             + Nuevo Equipo
           </button>
         </div>
       </div>
 
-      {/* Tarjetas resumen (RF9 / RF13) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', margin: '28px 0' }}>
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-          <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, letterSpacing: '0.05em' }}>Disponibles</span>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#4ade80', margin: '10px 0 0 0' }}>10</p>
+      {/* Tarjetas resumen de métricas */}
+      <div className="grid grid-cols-4 gap-4 my-7">
+        <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
+          <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">Disponibles</span>
+          <p className="text-[30px] font-bold text-[#4ade80] mt-2.5 mb-0">
+            {equipos.filter((e) => e.estado === 'Disponible').length}
+          </p>
         </div>
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-          <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, letterSpacing: '0.05em' }}>En Uso</span>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#60a5fa', margin: '10px 0 0 0' }}>2</p>
+        <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
+          <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">En Uso</span>
+          <p className="text-[30px] font-bold text-[#3b82f6] mt-2.5 mb-0">
+            {equipos.filter((e) => e.estado === 'En Uso').length}
+          </p>
         </div>
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-          <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, letterSpacing: '0.05em' }}>Dañados</span>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#fbbf24', margin: '10px 0 0 0' }}>1</p>
+        <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
+          <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">Dañados</span>
+          <p className="text-[30px] font-bold text-[#fbbf24] mt-2.5 mb-0">
+            {equipos.filter((e) => e.estado === 'Dañado').length}
+          </p>
         </div>
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '20px' }}>
-          <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, letterSpacing: '0.05em' }}>Perdidos</span>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#f87171', margin: '10px 0 0 0' }}>1</p>
+        <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5">
+          <span className="text-[11px] uppercase text-[#64748b] font-bold tracking-wider">Perdidos</span>
+          <p className="text-[30px] font-bold text-[#f87171] mt-2.5 mb-0">
+            {equipos.filter((e) => e.estado === 'Perdido').length}
+          </p>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+      {/* Navegación por pestañas */}
+      <div className="flex gap-2 mb-5">
         {[
-          { id: 'kits', label: 'Kits' },
+          { id: 'kits', label: 'Kits de equipos — Inventario' },
+          { id: 'kits-eventos', label: 'Kits para eventos — RF5' },
           { id: 'equipos', label: 'Todos los Equipos' },
           { id: 'bajas', label: 'Dados de Baja' },
         ].map((tab) => {
           const activo = tabActiva === tab.id;
+          let clasesTab = 'px-4 py-2 rounded-lg text-[13px] font-semibold cursor-pointer transition-colors border ';
+          if (activo) {
+            clasesTab += tab.id === 'bajas'
+              ? 'bg-[#f87171]/20 text-[#f87171] border-[#f87171]'
+              : 'bg-[#2563eb] text-[#f8fafc] border-[#2563eb]';
+          } else {
+            clasesTab += 'bg-[#0f172a] text-[#94a3b8] border-transparent hover:text-[#f8fafc]';
+          }
           return (
-            <button
-              key={tab.id}
-              onClick={() => setTabActiva(tab.id)}
-              style={{
-                padding: '8px 18px',
-                borderRadius: '8px',
-                border: tab.id === 'bajas' && activo ? '1px solid #ef4444' : 'none',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: 600,
-                background: activo
-                  ? tab.id === 'bajas' ? 'rgba(239, 68, 68, 0.2)' : '#2563eb'
-                  : '#0f172a',
-                color: activo ? (tab.id === 'bajas' ? '#f87171' : '#ffffff') : '#64748b',
-                transition: '0.15s ease',
-              }}
-            >
+            <button key={tab.id} onClick={() => setTabActiva(tab.id)} className={clasesTab}>
               {tab.label}
             </button>
           );
         })}
       </div>
 
-      {/* Tabla de Equipos */}
-      {tabActiva === 'equipos' && (
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-            <thead style={{ background: '#0b1120', color: '#64748b', borderBottom: '1px solid #1e293b' }}>
-              <tr>
-                <th style={{ padding: '14px 20px', fontWeight: 600 }}>Equipo</th>
-                <th style={{ padding: '14px 20px', fontWeight: 600 }}>Tipo</th>
-                <th style={{ padding: '14px 20px', fontWeight: 600 }}>Serie</th>
-                <th style={{ padding: '14px 20px', fontWeight: 600 }}>Estado</th>
-                <th style={{ padding: '14px 20px', fontWeight: 600 }}>Kits</th>
-                <th style={{ padding: '14px 20px', fontWeight: 600, textAlign: 'right' }}>Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {EQUIPOS_INICIALES.map((item) => (
-                <tr key={item.id} style={{ borderBottom: '1px solid #1e293b' }}>
-                  <td style={{ padding: '14px 20px', fontWeight: 500, color: '#f8fafc' }}>{item.nombre}</td>
-                  <td style={{ padding: '14px 20px', color: '#94a3b8' }}>{item.tipo}</td>
-                  <td style={{ padding: '14px 20px', color: '#64748b', fontFamily: 'monospace' }}>{item.serie}</td>
-                  <td style={{ padding: '14px 20px' }}>
-                    <span style={{ ...obtenerEstiloBadge(item.estado), padding: '4px 10px', borderRadius: '16px', fontSize: '12px', fontWeight: 600 }}>
-                      {item.estado}
+      {tabActiva !== 'kits-eventos' && cargandoInventario && <p className="text-[#94a3b8]">Sincronizando con PostgreSQL...</p>}
+      {tabActiva !== 'kits-eventos' && errorInventario && <p role="alert" className="text-[#f87171]">⚠️ Error de conexión: {errorInventario}</p>}
+
+      {/* Vista de Kits */}
+      {!cargandoInventario && !errorInventario && tabActiva === 'kits' && (
+        <div className="space-y-6">
+          {kits.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {kits.map((kit) => (
+                <div key={kit.id} className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5 hover:border-[#2563eb]/50 transition-colors">
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="font-bold text-[16px] text-[#f8fafc] m-0">{kit.nombre}</h3>
+                    <span className="text-[11px] bg-[#1e293b] text-[#38bdf8] px-2 py-0.5 rounded border border-[#334155]">
+                      {kit.equipos ? kit.equipos.length : 0} equipos
                     </span>
-                  </td>
-                  <td style={{ padding: '14px 20px' }}>
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      {item.kits.length > 0 ? (
-                        item.kits.map((k, idx) => (
-                          <span key={idx} style={{ background: '#1e293b', color: '#cbd5e1', fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid #334155' }}>
-                            {k}
+                  </div>
+                  <p className="text-[13px] text-[#94a3b8] mb-4 min-h-[38px] line-clamp-2">
+                    {kit.descripcion || 'Sin descripción asignada.'}
+                  </p>
+
+                  <div className="border-t border-[#1e293b] pt-3 mt-2">
+                    <span className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider block mb-2">Equipos incluidos:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {kit.equipos && kit.equipos.length > 0 ? (
+                        kit.equipos.map((eq) => (
+                          <span key={eq.id} className="bg-[#0b1120] text-[#cbd5e1] text-[11px] px-2 py-1 rounded border border-[#334155]">
+                            {eq.nombre}
                           </span>
                         ))
                       ) : (
-                        <span style={{ color: '#475569' }}>—</span>
+                        <span className="text-[12px] text-[#64748b] italic">Sin equipos vinculados</span>
                       )}
                     </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-6 text-[#94a3b8]">
+              No hay kits de equipos registrados en Inventario.
+            </div>
+          )}
+        </div>
+      )}
+
+      {tabActiva === 'kits-eventos' && <KitsPanel />}
+
+      {/* Tabla de Todos los Equipos */}
+      {!cargandoInventario && !errorInventario && tabActiva === 'equipos' && (
+        <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl overflow-hidden">
+          <table className="w-full border-collapse text-left text-[13px]">
+            <thead className="bg-[#0b1120] text-[#64748b] border-b border-[#1e293b]">
+              <tr>
+                <th className="py-3.5 px-5 font-semibold">Equipo</th>
+                <th className="py-3.5 px-5 font-semibold">Tipo</th>
+                <th className="py-3.5 px-5 font-semibold">Serie</th>
+                <th className="py-3.5 px-5 font-semibold">Estado</th>
+                <th className="py-3.5 px-5 font-semibold">Kit Asignado</th>
+                <th className="py-3.5 px-5 font-semibold">Valor Reposición</th>
+                <th className="py-3.5 px-5 font-semibold text-right">Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {equipos.filter((e) => e.estado !== 'Dado de Baja').map((item) => (
+                <tr key={item.id} className="border-b border-[#1e293b] hover:bg-[#1e293b]/40 transition-colors">
+                  <td className="py-3.5 px-5 font-medium text-[#f8fafc]">{item.nombre}</td>
+                  <td className="py-3.5 px-5 text-[#94a3b8]">{item.tipo}</td>
+                  <td className="py-3.5 px-5 text-[#64748b] font-mono">{item.serie || 'N/A'}</td>
+                  <td className="py-3.5 px-5">
+                    <span className={`px-2.5 py-1 rounded-full text-[12px] font-semibold ${obtenerClasesBadge(item.estado)}`}>
+                      {item.estado}
+                    </span>
                   </td>
-                  <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                    {(item.estado === 'Dañado' || item.estado === 'Perdido') && (
-                      <button style={{ padding: '6px 12px', fontSize: '12px', fontWeight: 600, color: '#f87171', background: 'rgba(248, 113, 113, 0.1)', border: '1px solid rgba(248, 113, 113, 0.3)', borderRadius: '6px', cursor: 'pointer' }}>
-                        Dar de baja
-                      </button>
-                    )}
+                  {/* Desplegable para seleccionar Kit (RF7) */}
+                  <td className="py-3.5 px-5">
+                    <select
+                      value={item.kitId || ''}
+                      onChange={(e) => handleAsignarKit(item.id, e.target.value)}
+                      className="bg-[#0b1120] text-[#38bdf8] border border-[#334155] rounded px-2 py-1 text-xs focus:outline-none focus:border-[#2563eb]"
+                    >
+                      <option value="">— Sin Kit —</option>
+                      {kits.map((k) => (
+                        <option key={k.id} value={k.id}>
+                          {k.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="py-3.5 px-5 text-[#94a3b8]">
+                    ${Number(item.valorReposicion || 0).toLocaleString('es-CL')}
+                  </td>
+                  <td className="py-3.5 px-5 text-right">
+                    <button
+                      onClick={() => handleDarDeBaja(item.id)}
+                      className="px-3 py-1.5 text-[12px] font-semibold text-[#f87171] bg-[#f87171]/10 border border-[#f87171]/30 rounded-md cursor-pointer hover:bg-[#f87171]/20 transition-colors"
+                    >
+                      Dar de baja
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -151,21 +337,165 @@ export default function InventarioPage() {
         </div>
       )}
 
-      {/* Vista Dados de Baja */}
-      {tabActiva === 'bajas' && (
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '60px 20px', textAlign: 'center' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#1e293b', color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'justify-center', margin: '0 auto 16px auto', fontSize: '20px', lineHeight: '48px' }}>
-            ✓
-          </div>
-          <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: '#f8fafc' }}>Sin equipos dados de baja</h3>
-          <p style={{ fontSize: '13px', color: '#64748b', marginTop: '6px' }}>Los equipos eliminados del inventario aparecerán aquí.</p>
+      {/* Vista Dados de Baja (RF13 - Consolidado Financiero de Mermas) */}
+      {!cargandoInventario && !errorInventario && tabActiva === 'bajas' && (
+        <div className="space-y-6">
+          {equiposDeBaja.length > 0 && (
+             <div className="bg-[#f87171]/10 border border-[#f87171]/30 rounded-xl p-6 flex justify-between items-center">
+               <div>
+                 <h2 className="text-[#f87171] font-bold text-[18px] mb-1">Mermas y Pérdidas Financieras</h2>
+                 <p className="text-[#94a3b8] text-[13px] m-0">Resumen de impacto económico por equipos dados de baja en el período actual.</p>
+               </div>
+               <div className="text-right">
+                 <span className="text-[11px] uppercase text-[#f87171]/80 font-bold tracking-wider">Impacto Total</span>
+                 <p className="text-[30px] font-bold text-[#f87171] m-0 mt-1">${perdidaTotal.toLocaleString('es-CL')}</p>
+               </div>
+             </div>
+          )}
+
+          {equiposDeBaja.length === 0 ? (
+            <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-16 text-center">
+              <div className="w-12 h-12 rounded-full bg-[#1e293b] text-[#94a3b8] flex items-center justify-center mx-auto mb-4 text-xl">✓</div>
+              <h3 className="text-[16px] font-semibold text-[#f8fafc] m-0">Sin equipos dados de baja</h3>
+              <p className="text-[13px] text-[#94a3b8] mt-1.5">Los equipos eliminados del inventario aparecerán aquí.</p>
+            </div>
+          ) : (
+            <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl overflow-hidden">
+              <table className="w-full border-collapse text-left text-[13px]">
+                <thead className="bg-[#0b1120] text-[#64748b] border-b border-[#1e293b]">
+                  <tr>
+                    <th className="py-3.5 px-5 font-semibold">Equipo Desincorporado</th>
+                    <th className="py-3.5 px-5 font-semibold">Serie</th>
+                    <th className="py-3.5 px-5 font-semibold">Motivo de Baja</th>
+                    <th className="py-3.5 px-5 font-semibold text-right">Valor de Reposición</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {equiposDeBaja.map((item) => (
+                    <tr key={item.id} className="border-b border-[#1e293b] hover:bg-[#1e293b]/40 transition-colors">
+                      <td className="py-3.5 px-5 font-medium text-[#f8fafc] line-through decoration-[#64748b]">
+                        {item.nombre} <span className="text-[#94a3b8] no-underline ml-2">({item.tipo})</span>
+                      </td>
+                      <td className="py-3.5 px-5 text-[#64748b] font-mono">{item.serie || 'N/A'}</td>
+                      <td className="py-3.5 px-5 text-[#94a3b8] italic">{item.motivo ? `"${item.motivo}"` : '—'}</td>
+                      <td className="py-3.5 px-5 text-right font-bold text-[#f87171]">
+                        ${Number(item.valorReposicion || 0).toLocaleString('es-CL')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Vista Kits */}
-      {tabActiva === 'kits' && (
-        <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', padding: '40px 20px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
-          Configuración y asignación de Kits lógicos (en construcción).
+      {/* Modal interactivo de Nuevo Kit (RF7) */}
+      {mostrarModalKit && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl w-full max-w-md p-6 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-[#1e293b] pb-4 mb-4">
+              <h3 className="text-lg font-bold text-[#f8fafc] m-0">Crear kit de equipos — Inventario</h3>
+              <button onClick={() => setMostrarModalKit(false)} className="text-[#64748b] hover:text-[#f8fafc] bg-transparent border-none text-lg cursor-pointer">✕</button>
+            </div>
+            <form onSubmit={handleGuardarKit} className="space-y-4">
+              <div>
+                <label htmlFor="nombre-kit-inventario" className="block text-xs font-semibold text-[#94a3b8] mb-1">Nombre del kit de equipos</label>
+                <input
+                  type="text"
+                  required
+                  id="nombre-kit-inventario"
+                  value={nombreKit}
+                  onChange={(e) => setNombreKit(e.target.value)}
+                  placeholder="Ej. Kit Transmisión Fútbol"
+                  className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]"
+                />
+              </div>
+              <div>
+                <label htmlFor="descripcion-kit-inventario" className="block text-xs font-semibold text-[#94a3b8] mb-1">Descripción</label>
+                <textarea
+                  rows="3"
+                  id="descripcion-kit-inventario"
+                  value={descripcionKit}
+                  onChange={(e) => setDescripcionKit(e.target.value)}
+                  placeholder="Detalle de los requerimientos de este kit..."
+                  className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]"
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#1e293b]">
+                <button type="button" onClick={() => setMostrarModalKit(false)} className="px-4 py-2 bg-[#1e293b] text-[#94a3b8] rounded-lg text-xs font-semibold border border-transparent">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-[#2563eb] text-[#f8fafc] rounded-lg text-xs font-semibold border-none cursor-pointer hover:bg-[#1d4ed8]">Guardar Kit</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal interactivo de Registro de Nuevo Equipo (RF9) */}
+      {mostrarModalEquipo && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl w-full max-w-md p-6 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-[#1e293b] pb-4 mb-4">
+              <h3 className="text-lg font-bold text-[#f8fafc] m-0">Registrar Nuevo Equipo</h3>
+              <button onClick={() => setMostrarModalEquipo(false)} className="text-[#64748b] hover:text-[#f8fafc] bg-transparent border-none text-lg cursor-pointer">✕</button>
+            </div>
+            <form onSubmit={handleGuardarEquipo} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Nombre del Equipo</label>
+                <input
+                  type="text"
+                  required
+                  value={nuevoNombre}
+                  onChange={(e) => setNuevoNombre(e.target.value)}
+                  placeholder="Ej. Cámara Sony A7IV"
+                  className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Categoría/Tipo</label>
+                  <select
+                    value={nuevoTipo}
+                    onChange={(e) => setNuevoTipo(e.target.value)}
+                    className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]"
+                  >
+                    <option>Cámara</option>
+                    <option>Trípode</option>
+                    <option>Cable</option>
+                    <option>Monitor</option>
+                    <option>Audio</option>
+                    <option>Switch</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Número de Serie</label>
+                  <input
+                    type="text"
+                    required
+                    value={nuevaSerie}
+                    onChange={(e) => setNuevaSerie(e.target.value)}
+                    placeholder="SN-000-XXX"
+                    className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#94a3b8] mb-1">Valor de Reposición (CLP)</label>
+                <input
+                  type="number"
+                  required
+                  value={nuevoValor}
+                  onChange={(e) => setNuevoValor(e.target.value)}
+                  placeholder="1500000"
+                  className="w-full bg-[#0b1120] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#f8fafc] focus:outline-none focus:border-[#2563eb]"
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#1e293b]">
+                <button type="button" onClick={() => setMostrarModalEquipo(false)} className="px-4 py-2 bg-[#1e293b] text-[#94a3b8] rounded-lg text-xs font-semibold border border-transparent">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-[#2563eb] text-[#f8fafc] rounded-lg text-xs font-semibold border-none cursor-pointer hover:bg-[#1d4ed8]">Guardar Equipo</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

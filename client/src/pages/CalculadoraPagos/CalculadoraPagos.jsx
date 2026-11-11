@@ -1,282 +1,130 @@
-import { useState } from "react";
-import "./CalculadoraPagos.css";
+import { useEffect, useRef, useState } from 'react';
+import { api } from '../../services/api';
+import './CalculadoraPagos.css';
 
-function CalculadoraPagos() {
-  const [evento, setEvento] = useState("");
-  const [montoEvento, setMontoEvento] = useState(350000);
+const dinero = valor => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(valor);
+const centesimas = valor => /^\d+(\.\d{1,2})?$/.test(String(valor)) ? Math.round(Number(valor) * 100) : NaN;
 
-  const [personas, setPersonas] = useState([
-    { id: 1, nombre: "Camarógrafo", porcentaje: 10 },
-    { id: 2, nombre: "Director", porcentaje: 15 },
-    { id: 3, nombre: "Sonidista", porcentaje: 8 },
-  ]);
-
-  const formatearDinero = (valor) =>
-    new Intl.NumberFormat("es-CL", {
-      style: "currency",
-      currency: "CLP",
-      maximumFractionDigits: 0,
-    }).format(valor);
-
-  const totalPorcentaje = personas.reduce(
-    (total, persona) => total + Number(persona.porcentaje || 0),
-    0
-  );
-
-  const totalDistribuido = personas.reduce(
-    (total, persona) =>
-      total + montoEvento * (Number(persona.porcentaje || 0) / 100),
-    0
-  );
-
-  const restante = montoEvento - totalDistribuido;
-
-  const actualizarPersona = (id, campo, valor) => {
-    setPersonas((actuales) =>
-      actuales.map((persona) =>
-        persona.id === id ? { ...persona, [campo]: valor } : persona
-      )
-    );
-  };
-
-  const agregarPersona = () => {
-    setPersonas((actuales) => [
-      ...actuales,
-      {
-        id: Date.now(),
-        nombre: "",
-        porcentaje: 0,
-      },
-    ]);
-  };
-
-  const eliminarPersona = (id) => {
-    setPersonas((actuales) =>
-      actuales.filter((persona) => persona.id !== id)
-    );
-  };
-
-  const limpiar = () => {
-    setPersonas([
-      { id: 1, nombre: "", porcentaje: 0 },
-      { id: 2, nombre: "", porcentaje: 0 },
-      { id: 3, nombre: "", porcentaje: 0 },
-    ]);
-
-    setEvento("");
-    setMontoEvento(0);
-  };
-
-  const cargarEvento = (valor) => {
-    setEvento(valor);
-
-    if (valor === "campeonato") {
-      setMontoEvento(350000);
-      setPersonas([
-        { id: 1, nombre: "Camarógrafo", porcentaje: 10 },
-        { id: 2, nombre: "Director", porcentaje: 15 },
-        { id: 3, nombre: "Sonidista", porcentaje: 8 },
-      ]);
-    }
-
-    if (valor === "graduacion") {
-      setMontoEvento(500000);
-      setPersonas([
-        { id: 1, nombre: "Director", porcentaje: 15 },
-        { id: 2, nombre: "Camarógrafo", porcentaje: 10 },
-        { id: 3, nombre: "Audio", porcentaje: 12 },
-      ]);
-    }
-  };
-
-  return (
-    <div className="pagos-app">
-      <aside className="pagos-sidebar">
-        <div className="pagos-marca">
-          <div className="pagos-logo">67</div>
-
-          <div>
-            <strong>Six Seven</strong>
-            <span>TRANSMISIONES</span>
-          </div>
-        </div>
-
-        <p className="pagos-label">PERFIL ACTIVO</p>
-
-        <button className="pagos-perfil activo">Dueño</button>
-        <button className="pagos-perfil">Contador</button>
-        <button className="pagos-perfil">Jefe Técnico</button>
-
-        <nav className="pagos-menu">
-          <button>▣ Dashboard</button>
-          <button>▹ Eventos</button>
-          <button>◇ Inventario</button>
-          <button>♙ Personal</button>
-          <button>☆ Auspiciadores</button>
-          <button>$ Finanzas</button>
-          <button>▤ Reportes</button>
-          <button className="activo">▧ Calculadora Pagos</button>
-        </nav>
-
-        <div className="pagos-usuario">● Dueño</div>
-      </aside>
-
-      <main className="pagos-contenido">
-        <header className="pagos-header">
-          <h1>Calculadora de Pagos</h1>
-
-          <p>
-            Distribuye el pago de un evento entre los participantes por
-            porcentaje
-          </p>
-        </header>
-
-        <section className="pagos-evento">
-          <label>Cargar desde evento:</label>
-
-          <select
-            value={evento}
-            onChange={(e) => cargarEvento(e.target.value)}
-          >
-            <option value="">— Seleccionar evento —</option>
-            <option value="campeonato">
-              Final Campeonato Regional
-            </option>
-            <option value="graduacion">
-              Graduación Ingeniería Civil
-            </option>
-          </select>
-        </section>
-
-        <section className="pagos-tabla">
-          <div className="pagos-tabla-header">
-            <span>NOMBRE</span>
-            <span>PORCENTAJE</span>
-            <span>TOTAL DEL PAGO</span>
-            <span></span>
-          </div>
-
-          {personas.map((persona) => {
-            const pago =
-              montoEvento *
-              (Number(persona.porcentaje || 0) / 100);
-
-            return (
-              <div className="pagos-fila" key={persona.id}>
-                <input
-                  type="text"
-                  placeholder="nombre"
-                  value={persona.nombre}
-                  onChange={(e) =>
-                    actualizarPersona(
-                      persona.id,
-                      "nombre",
-                      e.target.value
-                    )
-                  }
-                />
-
-                <div className="pagos-porcentaje">
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={persona.porcentaje}
-                    onChange={(e) =>
-                      actualizarPersona(
-                        persona.id,
-                        "porcentaje",
-                        e.target.value
-                      )
-                    }
-                  />
-
-                  <span>%</span>
-                </div>
-
-                <div className="pagos-total-persona">
-                  {persona.porcentaje > 0
-                    ? formatearDinero(pago)
-                    : "—"}
-                </div>
-
-                <button
-                  className="pagos-eliminar"
-                  onClick={() => eliminarPersona(persona.id)}
-                >
-                  −
-                </button>
-              </div>
-            );
-          })}
-        </section>
-
-        <section className="pagos-controles">
-          <div className="pagos-controles-izquierda">
-            <span className="pagos-porcentaje-total">
-              {totalPorcentaje}%
-            </span>
-
-            <button
-              className="pagos-limpiar"
-              onClick={limpiar}
-            >
-              Limpiar
-            </button>
-          </div>
-
-          <button
-            className="pagos-agregar"
-            onClick={agregarPersona}
-          >
-            +
-          </button>
-        </section>
-
-        <section className="pagos-resultados">
-          <div className="pagos-monto">
-            <span>MONTO PAGADO POR EVENTO</span>
-
-            <input
-              type="number"
-              min="0"
-              value={montoEvento}
-              onChange={(e) =>
-                setMontoEvento(Number(e.target.value))
-              }
-            />
-
-            <small>Ingresa el monto total del evento</small>
-          </div>
-
-          <div className="pagos-ganancias">
-            <span>RESULTADOS · GANANCIAS DEL EVENTO</span>
-
-            <div className="pagos-resultado-linea">
-              <p>Total distribuido</p>
-              <strong>
-                {formatearDinero(totalDistribuido)}
-              </strong>
-            </div>
-
-            <div className="pagos-resultado-linea">
-              <p>Monto restante</p>
-              <strong
-                className={restante < 0 ? "negativo" : ""}
-              >
-                {formatearDinero(restante)}
-              </strong>
-            </div>
-
-            <div className="pagos-resultado-linea">
-              <p>Porcentaje asignado</p>
-              <strong>{totalPorcentaje}%</strong>
-            </div>
-          </div>
-        </section>
-      </main>
-    </div>
-  );
+export default function CalculadoraPagos() {
+  const [eventos, setEventos] = useState(null);
+  const [id, setId] = useState('');
+  const [error, setError] = useState('');
+  const [intento, setIntento] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    api('/eventos', { signal: controller.signal }).then(setEventos).catch(e => {
+      if (e.name !== 'AbortError') setError(e.message);
+    });
+    return () => controller.abort();
+  }, [intento]);
+  return <div className="pagos-app"><div className="pagos-contenido">
+    <header className="pagos-header"><h1>Calculadora de Pagos</h1><p>Distribuye el monto final del evento entre sus trabajadores.</p></header>
+    {error && <p role="alert" className="pagos-error">{error} <button onClick={() => { setError(''); setIntento(i => i + 1); }}>Reintentar</button></p>}
+    {!eventos && !error && <p role="status">Cargando eventos…</p>}
+    {eventos?.length === 0 && <p>No hay eventos registrados.</p>}
+    <section className="pagos-evento"><label htmlFor="evento-pagos">Evento</label>
+      <select id="evento-pagos" value={id} onChange={e => setId(e.target.value)} disabled={!eventos?.length}>
+        <option value="">— Seleccionar evento —</option>
+        {eventos?.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+      </select>
+    </section>
+    {id && <DetalleEvento key={id} id={id} />}
+  </div></div>;
 }
 
-export default CalculadoraPagos;
+function DetalleEvento({ id }) {
+  const [datos, setDatos] = useState(null);
+  const [porcentajes, setPorcentajes] = useState({});
+  const [preview, setPreview] = useState(null);
+  const [error, setError] = useState('');
+  const [ocupado, setOcupado] = useState(false);
+  const [confirmar, setConfirmar] = useState(false);
+  const [recarga, setRecarga] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+    Promise.all([api(`/eventos/${id}`, { signal }), api(`/eventos/${id}/asignaciones`, { signal }),
+      api(`/eventos/${id}/liquidacion`, { signal }).catch(e => { if (e.status === 404) return null; throw e; })])
+      .then(([evento, asignaciones, liquidacion]) => {
+        setDatos({ evento, asignaciones, liquidacion });
+        setPorcentajes(Object.fromEntries(asignaciones.map(a => [a.id, a.porcentaje_centesimas === null ? '' : String(a.porcentaje_centesimas / 100)])));
+      }).catch(e => { if (e.name !== 'AbortError') setError(e.message); });
+    return () => controller.abort();
+  }, [id, recarga]);
+
+  async function ejecutar(trabajo) {
+    setOcupado(true); setError('');
+    try { await trabajo(); }
+    catch (e) { setError(e.status === 409 ? `${e.message} Usa «Recargar datos» antes de continuar.` : e.message); setPreview(null); setConfirmar(false); }
+    finally { setOcupado(false); }
+  }
+  function recargar() { setDatos(null); setError(''); setPreview(null); setConfirmar(false); setRecarga(r => r + 1); }
+  if (!datos) return <section aria-busy={!error}>{error ? <p role="alert">{error}</p> : <p role="status">Cargando evento…</p>}<button onClick={recargar}>Recargar datos</button></section>;
+  const { evento, asignaciones, liquidacion } = datos;
+  const cambios = asignaciones.map(a => ({ asignacionId: a.id, porcentajeCentesimas: centesimas(porcentajes[a.id]) }));
+  const total = liquidacion ? liquidacion.detalles.reduce((s, d) => s + Math.round(d.porcentajeAplicado * 100), 0) : cambios.reduce((s, c) => s + c.porcentajeCentesimas, 0);
+  const valido = cambios.every(c => Number.isInteger(c.porcentajeCentesimas) && c.porcentajeCentesimas >= 0 && c.porcentajeCentesimas <= 10000) && total <= 10000;
+  const modificado = cambios.some((c, i) => c.porcentajeCentesimas !== asignaciones[i].porcentaje_centesimas);
+  const resultado = liquidacion || preview;
+  const filas = liquidacion ? liquidacion.detalles.map(d => ({ id: d.asignacionId, nombre_persona: d.nombrePersona, nombre_rol: d.nombreRol, porcentaje: d.porcentajeAplicado })) : asignaciones;
+  const finalizado = evento.estado === 'finalizado';
+  const ruta = `/eventos/${id}`;
+  return <section aria-busy={ocupado}>
+    {error && <p role="alert" className="pagos-error">{error}</p>}
+    <div className="pagos-controles"><p>Estado: <strong>{evento.estado}</strong></p><button disabled={ocupado} onClick={recargar}>Recargar datos</button></div>
+    {liquidacion && <p className="pagos-exito">Liquidación guardada · Solo consulta · {new Date(liquidacion.creadaEn).toLocaleString('es-CL')}</p>}
+    {!filas.length && <p>No hay trabajadores asignados a este evento.</p>}
+    <div className="pagos-tabla"><div className="pagos-tabla-header"><span>TRABAJADOR</span><span>ROL</span><span>PORCENTAJE</span><span>PAGO CLP</span></div>
+      {filas.map(a => <div className="pagos-fila" key={a.id}>
+        <span>{a.nombre_persona}</span><span>{a.nombre_rol}</span>
+        {liquidacion ? <span>{a.porcentaje}%</span> : <div className="pagos-porcentaje"><input aria-label={`Porcentaje de ${a.nombre_persona}`} type="number" min="0" max="100" step="0.01" disabled={ocupado} value={porcentajes[a.id]} onChange={e => {
+          setPorcentajes(p => ({ ...p, [a.id]: e.target.value })); setPreview(null); setConfirmar(false);
+        }} /><span>%</span></div>}
+        <span>{resultado ? dinero(resultado.detalles.find(d => d.asignacionId === a.id)?.montoCalculado ?? 0) : '—'}</span>
+      </div>)}
+    </div>
+    <p className={valido || liquidacion ? 'pagos-porcentaje-total' : 'pagos-error'}>Utilizado: {Number.isFinite(total) ? (total / 100).toFixed(2) : '—'}% · Restante: {Number.isFinite(total) ? ((10000 - total) / 100).toFixed(2) : '—'}%</p>
+    {!valido && !liquidacion && <p role="alert" className="pagos-error">Completa los porcentajes con hasta dos decimales. La suma no puede superar 100%.</p>}
+    <div className="pagos-resultados"><div className="pagos-monto"><span>MONTO FINAL ACORDADO</span><strong>{dinero(liquidacion?.montoTotalEvento ?? evento.monto_total)}</strong></div>
+      <div className="pagos-ganancias"><span>{liquidacion ? 'LIQUIDACIÓN HISTÓRICA' : 'PREVISUALIZACIÓN DEL SERVIDOR'}</span>
+        <div className="pagos-resultado-linea"><p>Total distribuido</p><strong>{resultado ? dinero(resultado.totalDistribuido) : '—'}</strong></div>
+        <div className="pagos-resultado-linea"><p>Monto restante</p><strong>{resultado ? dinero(resultado.montoTotalEvento - resultado.totalDistribuido) : '—'}</strong></div>
+      </div></div>
+    {!liquidacion && <div className="pagos-acciones">
+      <button disabled={ocupado || !valido || !modificado || !asignaciones.length} onClick={() => ejecutar(async () => {
+        const r = await api(`${ruta}/asignaciones/porcentajes`, { method: 'PATCH', body: { versionEvento: evento.version, cambios } });
+        setDatos(d => ({ ...d, evento: { ...d.evento, version: r.versionEvento }, asignaciones: d.asignaciones.map(a => ({ ...a, porcentaje_centesimas: centesimas(porcentajes[a.id]) })) })); setPreview(null);
+      })}>Guardar porcentajes</button>
+      {!finalizado && <button disabled={ocupado || modificado} onClick={() => ejecutar(async () => {
+        const r = await api(`${ruta}/estado`, { method: 'PATCH', body: { versionEvento: evento.version, estado: evento.estado === 'pendiente' ? 'en_curso' : 'finalizado' } });
+        setDatos(d => ({ ...d, evento: r }));
+      })}>{evento.estado === 'pendiente' ? 'Iniciar evento' : 'Finalizar evento'}</button>}
+      <button disabled={ocupado || !finalizado || !valido || modificado || !asignaciones.length} onClick={() => ejecutar(async () => {
+        setPreview(await api(`${ruta}/liquidacion/previsualizacion`, { method: 'POST', body: { versionEvento: evento.version } }));
+      })}>Previsualizar pagos</button>
+      <button disabled={ocupado || !preview || modificado} onClick={() => setConfirmar(true)}>Guardar liquidación</button>
+    </div>}
+    {!finalizado && !liquidacion && <p>La previsualización y el guardado requieren finalizar el evento. Al finalizar se congelan monto, trabajadores y roles.</p>}
+    {confirmar && <Confirmacion ocupado={ocupado} cancelar={() => setConfirmar(false)} guardar={() => ejecutar(async () => {
+      const r = await api(`${ruta}/liquidacion`, { method: 'POST', body: { versionEvento: preview.versionEvento } });
+      setDatos(d => ({ ...d, liquidacion: r })); setConfirmar(false); setPreview(null);
+    })} />}
+
+  </section>;
+}
+
+function Confirmacion({ ocupado, cancelar, guardar }) {
+  const dialog = useRef(null);
+  useEffect(() => {
+    const nodo = dialog.current;
+    nodo.showModal();
+    return () => nodo.close();
+  }, []);
+  return <dialog ref={dialog} className="pagos-modal" aria-labelledby="confirmacion-titulo" onCancel={e => {
+    if (ocupado) e.preventDefault(); else cancelar();
+  }}>
+    <h2 id="confirmacion-titulo">Guardar liquidación</h2>
+    <p>¿Estás seguro de guardar esta liquidación? Los trabajadores, roles, porcentajes e importes quedarán registrados y no podrán modificarse.</p>
+    <div className="pagos-acciones"><button autoFocus disabled={ocupado} onClick={cancelar}>Cancelar</button><button disabled={ocupado} onClick={guardar}>Confirmar guardado</button></div>
+  </dialog>;
+}
