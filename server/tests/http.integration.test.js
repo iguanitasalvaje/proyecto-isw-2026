@@ -3,20 +3,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
 const { once } = require('node:events');
-const { crearPool } = require('../db/pool');
-const { migrar } = require('../db/migrate');
+const { conBaseTemporal } = require('./helpers/postgres');
 const { crearOperacionRepository } = require('../repositories/operacionRepository');
 const { crearApp } = require('../app');
 
-test('API HTTP RF12 con PostgreSQL real', async t => {
-  assert.ok(process.env.TEST_DATABASE_URL, 'Falta TEST_DATABASE_URL');
-  const schema = `rf12_http_${randomUUID().replaceAll('-', '')}`;
-  const admin = crearPool({ connectionString: process.env.TEST_DATABASE_URL });
-  const pool = crearPool({ connectionString: process.env.TEST_DATABASE_URL, schema });
-  let servidor, creado = false;
+test('API HTTP RF12 con PostgreSQL real', async t => conBaseTemporal(async pool => {
+  let servidor;
   try {
-    await admin.query(`CREATE SCHEMA ${schema}`); creado = true;
-    await migrar(pool);
     const op = crearOperacionRepository(pool);
     servidor = crearApp(pool).listen(0, '127.0.0.1');
     await once(servidor, 'listening');
@@ -102,8 +95,5 @@ test('API HTTP RF12 con PostgreSQL real', async t => {
     });
   } finally {
     if (servidor) await new Promise(resolve => servidor.close(resolve));
-    await pool.end();
-    if (creado) await admin.query(`DROP SCHEMA ${schema} CASCADE`);
-    await admin.end();
   }
-});
+}));
