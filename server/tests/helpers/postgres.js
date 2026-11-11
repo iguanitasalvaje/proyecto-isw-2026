@@ -1,4 +1,5 @@
 'use strict';
+
 const assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
 const { crearPool } = require('../../db/pool');
@@ -6,8 +7,13 @@ const { migrar } = require('../../db/migrate');
 
 // Solo se permite verificar identidad mediante transacciones de lectura.
 async function verificarIndependencia({ env = process.env, factory = crearPool } = {}) {
-  assert.ok(env.TEST_DATABASE_URL, 'Falta TEST_DATABASE_URL');
+  assert.ok(env.TEST_DATABASE_URL, 'Falta TEST_DATABASE_URL: se requiere una base exclusiva de pruebas');
   assert.ok(env.DATABASE_URL, 'Falta DATABASE_URL para verificar aislamiento');
+
+  if (env.DATABASE_URL.trim() === env.TEST_DATABASE_URL.trim()) {
+    throw new Error('TEST_DATABASE_URL no debe ser idéntica a DATABASE_URL para proteger la base principal');
+  }
+
   const conexiones = [];
   try {
     const identidades = [];
@@ -42,7 +48,8 @@ async function conBaseTemporal(trabajo, { migraciones = true, env = process.env,
   const admin = factory({ connectionString: env.TEST_DATABASE_URL });
   let pool, creado = false;
   try {
-    await admin.query(`CREATE SCHEMA ${schema}`); creado = true;
+    await admin.query(`CREATE SCHEMA ${schema}`);
+    creado = true;
     pool = factory({ connectionString: env.TEST_DATABASE_URL, schema });
     if (migraciones) await aplicarMigraciones(pool);
     return await trabajo(pool, schema);
@@ -54,4 +61,5 @@ async function conBaseTemporal(trabajo, { migraciones = true, env = process.env,
     }
   }
 }
+
 module.exports = { conBaseTemporal, verificarIndependencia };

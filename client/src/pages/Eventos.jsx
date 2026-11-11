@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import FormularioTransmision from '../components/ui/FormularioTransmision';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { ROLES } from '../config/permisos';
 
 const Eventos = () => {
+  const { rolActivo } = useAuth();
+  const puedeAdministrarEventos = rolActivo === ROLES.DUENO;
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [eventos, setEventos] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -42,7 +46,7 @@ const Eventos = () => {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-50 p-8 font-sans relative">
-      
+
       {/* Encabezado con totales automáticos */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div>
@@ -54,20 +58,22 @@ const Eventos = () => {
             </span>
           </p>
         </div>
-        
-        <button 
-          onClick={() => setMostrarFormulario(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition-colors cursor-pointer self-start md:self-auto"
-        >
-          + Nuevo Evento
-        </button>
+
+        {puedeAdministrarEventos && (
+          <button
+            onClick={() => setMostrarFormulario(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm transition-colors cursor-pointer self-start md:self-auto"
+          >
+            + Nuevo Evento
+          </button>
+        )}
       </div>
 
       {/* Filtros */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <input 
-          type="text" 
-          placeholder="Buscar evento, cliente, ciudad..." 
+        <input
+          type="text"
+          placeholder="Buscar evento, cliente, ciudad..."
           className="bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-400 px-4 py-2.5 rounded-md w-full sm:w-80 focus:outline-none focus:border-blue-500"
         />
         <select className="bg-slate-800 border border-slate-700 text-slate-100 px-4 py-2.5 rounded-md focus:outline-none focus:border-blue-500 cursor-pointer">
@@ -78,20 +84,7 @@ const Eventos = () => {
         </select>
       </div>
 
-      {/* Indicadores de carga o error si falla el backend */}
-      {cargando && (
-        <div className="text-slate-400 text-sm mb-4">Cargando eventos desde el servidor PostgreSQL...</div>
-      )}
-      {error && (
-        <div className="bg-red-950/60 border border-red-800 text-red-200 p-4 rounded-lg mb-6 text-sm flex justify-between items-center">
-          <span>⚠️ {error}</span>
-          <button onClick={cargarEventos} className="bg-red-900 px-3 py-1 rounded text-xs font-bold hover:bg-red-800">
-            Reintentar
-          </button>
-        </div>
-      )}
-
-      {/* Tabla Completa con TODAS tus columnas UI intactas */}
+      {/* Tabla Completa con TODAS las columnas */}
       <div className="bg-slate-800 rounded-xl overflow-x-auto border border-slate-700 shadow-lg">
         <table className="w-full text-left text-sm border-collapse">
           <thead>
@@ -120,11 +113,11 @@ const Eventos = () => {
               const horaFormatted = ev.fecha ? new Date(ev.fecha).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) : (ev.hora || '12:00');
 
               return (
-                <tr 
-                  key={ev.id} 
+                <tr
+                  key={ev.id}
                   className={`transition-colors ${
-                    requiereAlerta 
-                      ? 'bg-red-950/20 hover:bg-red-950/40' 
+                    requiereAlerta
+                      ? 'bg-red-950/20 hover:bg-red-950/40'
                       : 'hover:bg-slate-700/30'
                   }`}
                 >
@@ -148,7 +141,7 @@ const Eventos = () => {
                   <td className="px-4 py-4">
                     <span className={`px-2.5 py-1 rounded-md font-bold text-xs ${
                       ev.estado === 'Confirmado' || ev.estado === 'en_curso'
-                        ? 'bg-blue-950 text-blue-400 border border-blue-800' 
+                        ? 'bg-blue-950 text-blue-400 border border-blue-800'
                         : 'bg-amber-950 text-amber-400 border border-amber-800'
                     }`}>
                       {ev.estado || 'Agendado'}
@@ -189,14 +182,14 @@ const Eventos = () => {
       {mostrarFormulario && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="relative w-full max-w-lg bg-slate-800 rounded-xl shadow-2xl overflow-hidden border border-slate-700">
-            <button 
+            <button
               onClick={() => setMostrarFormulario(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold text-xl px-2 py-1 rounded cursor-pointer z-10"
             >
               ✕
             </button>
-            <FormularioTransmision 
-              onClose={() => setMostrarFormulario(false)} 
+            <FormularioTransmision
+              onClose={() => setMostrarFormulario(false)}
               onEventoCreado={cargarEventos}
             />
           </div>

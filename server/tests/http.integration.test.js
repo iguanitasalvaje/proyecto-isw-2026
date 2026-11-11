@@ -11,7 +11,7 @@ test('API HTTP RF12 con PostgreSQL real', async t => conBaseTemporal(async pool 
   let servidor;
   try {
     const op = crearOperacionRepository(pool);
-    servidor = crearApp(pool).listen(0, '127.0.0.1');
+    servidor = crearApp(pool, { requerirAutenticacion: false }).listen(0, '127.0.0.1');
     await once(servidor, 'listening');
     const base = `http://127.0.0.1:${servidor.address().port}/api`;
     async function http(ruta, method = 'GET', body, status = 200) {
