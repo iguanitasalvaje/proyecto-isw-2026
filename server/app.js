@@ -4,12 +4,14 @@ const cors = require('cors');
 const { crearKitRepository } = require('./repositories/kitRepository');
 const { crearOperacionRepository } = require('./repositories/operacionRepository');
 const { crearLiquidacionRepository } = require('./repositories/liquidacionRepository');
+const { crearAuspiciadorRepository } = require('./repositories/auspiciadorRepository');
 
 function crearApp(pool) {
   const app = express();
   const kits = crearKitRepository(pool);
   const operacion = crearOperacionRepository(pool);
   const liquidaciones = crearLiquidacionRepository(pool);
+  const auspiciadores = crearAuspiciadorRepository(pool);
   app.use(cors());
   app.use(express.json({ limit: '64kb' }));
   app.get('/api', (req, res) => res.json({ status: 'ok', mensaje: 'Servidor del proyecto funcionando correctamente' }));
@@ -23,6 +25,20 @@ function crearApp(pool) {
     next();
   });
   app.get('/api/eventos/:id', async (req, res) => res.json(await operacion.obtenerEvento(req.params.id)));
+  // RF8: canjes valorizados en CLP (no se suman a evento.monto_total).
+  app.get('/api/auspiciadores', async (req, res) => res.json(await auspiciadores.listarAuspiciadores()));
+  app.post('/api/auspiciadores', async (req, res) => {
+    res.status(201).json(await auspiciadores.crearAuspiciador(req.body || {}));
+  });
+  app.get('/api/eventos/:id/canjes', async (req, res) => {
+    res.json(await auspiciadores.listarCanjesEvento(req.params.id));
+  });
+  app.post('/api/eventos/:id/canjes', async (req, res) => {
+    res.status(201).json(await auspiciadores.registrarCanje({
+      ...req.body,
+      eventoId: req.params.id,
+    }));
+  });
   app.get('/api/eventos/:id/asignaciones', async (req, res) => {
     await operacion.obtenerEvento(req.params.id);
     res.json(await operacion.listarAsignaciones(req.params.id));

@@ -4,14 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test tests/liquidacion.test.js tests/recargoPremium.test.js",
+    "test": "node --test tests/liquidacion.test.js tests/recargoPremium.test.js tests/rf8.test.js",
+    "test:rf8": "node --test tests/rf8.test.js",
     "test:integration": "node -r dotenv/config --test tests/persistencia.integration.test.js dotenv_config_quiet=true",
     "db:migrate": "node db/migrate.js",
     "start": "node index.js",
     "test:migration": "node -r dotenv/config --test tests/migracion002.integration.test.js dotenv_config_quiet=true",
     "test:http": "node -r dotenv/config --test tests/http.integration.test.js dotenv_config_quiet=true",
     "test:rf5:integration": "node -r dotenv/config --test tests/rf5.integration.test.js dotenv_config_quiet=true",
-    "test:rf5:http": "node -r dotenv/config --test tests/rf5.http.test.js dotenv_config_quiet=true"
+    "test:rf5:http": "node -r dotenv/config --test tests/rf5.http.test.js dotenv_config_quiet=true",
+    "test:rf8:integration": "node -r dotenv/config --test tests/rf8.integration.test.js dotenv_config_quiet=true"
   },
   "keywords": [],
   "author": "",
