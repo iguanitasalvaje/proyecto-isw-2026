@@ -6,6 +6,7 @@ const { crearOperacionRepository } = require('./repositories/operacionRepository
 const { crearLiquidacionRepository } = require('./repositories/liquidacionRepository');
 const { crearAuspiciadorRepository } = require('./repositories/auspiciadorRepository');
 const { crearInventarioRepository } = require('./repositories/inventarioRepository');
+const { crearReporteFinancieroRepository } = require('./repositories/reporteFinancieroRepository');
 
 function crearApp(pool) {
   const app = express();
@@ -14,6 +15,7 @@ function crearApp(pool) {
   const liquidaciones = crearLiquidacionRepository(pool);
   const auspiciadores = crearAuspiciadorRepository(pool);
   const inventario = crearInventarioRepository(pool);
+  const reportesFinancieros = crearReporteFinancieroRepository(pool);
   
   app.use(cors());
   app.use(express.json({ limit: '64kb' }));
@@ -378,6 +380,29 @@ function crearApp(pool) {
   });
 
   // --- FIN MÓDULO DE KITS Y ECONOMÍA ---
+
+  // RF14: Dashboard financiero. Los montos se calculan en PostgreSQL y nunca son fijos.
+  app.get('/api/reportes/financiero', async (req, res, next) => {
+    try {
+      res.json(await reportesFinancieros.obtenerDashboard(req.query));
+    } catch (err) { next(err); }
+  });
+
+  // Persistencia de gastos para RF14 (debe protegerse con permisos de Contador/RF1).
+  app.get('/api/eventos/:id/gastos', async (req, res, next) => {
+    try { res.json(await reportesFinancieros.listarGastos(req.params.id)); }
+    catch (err) { next(err); }
+  });
+
+  app.post('/api/eventos/:id/gastos', async (req, res, next) => {
+    try {
+      res.status(201).json(await reportesFinancieros.registrarGasto({
+        ...req.body, eventoId: req.params.id,
+      }));
+    } catch (err) { next(err); }
+  });
+
+
 
   app.use((req, res) => res.status(404).json({ error: 'Ruta inexistente' }));
 

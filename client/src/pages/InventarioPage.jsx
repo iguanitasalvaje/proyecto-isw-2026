@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import KitsPanel from '../components/kits/KitsPanel';
 
-const API_EQUIPOS_URL = 'http://localhost:1303/api/inventario/equipos';
-const API_KITS_URL = 'http://localhost:1303/api/inventario/kits';
+const API_EQUIPOS_URL = '/api/inventario/equipos';
+const API_KITS_URL = '/api/inventario/kits';
 
 async function consultarInventario(signal) {
   const [resEquipos, resKits] = await Promise.all([

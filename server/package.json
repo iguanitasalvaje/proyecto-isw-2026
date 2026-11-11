@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "test": "node --test tests/liquidacion.test.js tests/recargoPremium.test.js tests/rf8.test.js",
+    "test": "node --test tests/liquidacion.test.js tests/recargoPremium.test.js tests/rf8.test.js tests/rf14.test.js",
     "test:rf8": "node --test tests/rf8.test.js",
     "test:integration": "node -r dotenv/config --test tests/persistencia.integration.test.js dotenv_config_quiet=true",
     "test:migration": "node -r dotenv/config --test tests/migracion002.integration.test.js dotenv_config_quiet=true",
@@ -18,7 +18,8 @@
     "db:seed": "node prisma/seed.js",
     "test:inventario:unit": "node --test tests/inventarioRepository.test.js",
     "test:inventario:http:validation": "node --test tests/inventario.http.validation.test.js",
-    "test:inventario:integration": "node -r dotenv/config --test tests/inventario.integration.test.js dotenv_config_quiet=true"
+    "test:inventario:integration": "node -r dotenv/config --test tests/inventario.integration.test.js dotenv_config_quiet=true",
+    "test:rf14:integration": "node -r dotenv/config --test tests/rf14.integration.test.js dotenv_config_quiet=true"
   },
   "keywords": [],
   "author": "",

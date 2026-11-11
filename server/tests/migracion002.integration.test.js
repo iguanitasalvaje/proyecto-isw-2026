@@ -62,7 +62,8 @@ assert.deepEqual(
     '002_rf12_porcentaje_individual.sql',
     '003_rf5_kit_premium.sql',
     '004_inventario.sql',
-    '004_rf8_canjes.sql'
+    '004_rf8_canjes.sql',
+    '005_rf14_gastos_operativos.sql'
   ]
 );
   for (const tabla of tablas) assert.equal((await pool.query(`SELECT * FROM ${tabla}`)).rowCount, 0);
