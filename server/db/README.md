@@ -109,3 +109,30 @@ Recorrido manual con registros reales existentes:
 10. Consultar Finanzas y liquidar en RF12: ambos utilizan el total persistido.
 
 Contrato y alcance: `server/domain/recargoPremium.md`.
+
+## RF8 – Canjes de auspiciadores
+
+La migración `004_rf8_canjes.sql` crea `auspiciador` y `canje_auspiciador`.
+El valor estimado en CLP se almacena por separado del dinero efectivo y **no
+modifica** `evento.monto_total`. Este dato se utilizará más adelante en el
+indicador económico estimado de RF14.
+
+Endpoints:
+
+- `GET /api/auspiciadores`: listado de auspiciadores.
+- `POST /api/auspiciadores`: `{ "nombre": "Empresa X" }`.
+- `GET /api/eventos/:id/canjes`: `{ eventoId, canjes, totalEstimadoClp }`.
+- `POST /api/eventos/:id/canjes`:
+  `{ "auspiciadorId": "uuid", "descripcion": "Producto o servicio", "montoEstimadoClp": 25000 }`.
+  La descripción es opcional. El monto debe ser un entero positivo expresado
+  como número JSON. Los valores se validan también con `CHECK` en PostgreSQL.
+
+Pruebas sin PostgreSQL: `npm test` o `npm run test:rf8`.
+Prueba real en un esquema temporal: `npm run test:rf8:integration`. **No
+configurar `TEST_DATABASE_URL` con una URL de producción**. El script exige
+una URL explícita para la base exclusiva de pruebas, diferente de `DATABASE_URL`.
+
+Antes de ejecutar `npm run db:migrate` en producción, coordinar la integración,
+revisar que la migración 004 esté libre y realizar un respaldo. La API aún no
+controla el rol Contador; esa restricción depende de implementar RF1 con
+sesiones y autorización real en Express.

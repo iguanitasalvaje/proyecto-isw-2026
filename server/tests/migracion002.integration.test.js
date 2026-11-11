@@ -55,7 +55,15 @@ test('002 preserva registros previos y valida el nuevo esquema', async () => con
   await pool.query(`DROP TABLE ${['detalle_liquidacion', 'liquidacion', 'asignacion_evento', 'valor_rol', 'rol_evento', 'persona', 'evento'].map(tabla => `${schema}.${tabla}`).join(', ')}`);
   await migrar(pool);
   await migrar(pool);
-  assert.deepEqual((await pool.query('SELECT nombre FROM schema_migrations ORDER BY nombre')).rows.map(r => r.nombre),
-    ['001_rf12.sql', '002_rf12_porcentaje_individual.sql', '003_rf5_kit_premium.sql', '004_inventario.sql']);
+assert.deepEqual(
+  (await pool.query('SELECT nombre FROM schema_migrations ORDER BY nombre')).rows.map(r => r.nombre),
+  [
+    '001_rf12.sql',
+    '002_rf12_porcentaje_individual.sql',
+    '003_rf5_kit_premium.sql',
+    '004_inventario.sql',
+    '004_rf8_canjes.sql'
+  ]
+);
   for (const tabla of tablas) assert.equal((await pool.query(`SELECT * FROM ${tabla}`)).rowCount, 0);
 }, { migraciones: false }));

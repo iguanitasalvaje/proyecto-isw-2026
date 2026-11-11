@@ -4,6 +4,7 @@ const cors = require('cors');
 const { crearKitRepository } = require('./repositories/kitRepository');
 const { crearOperacionRepository } = require('./repositories/operacionRepository');
 const { crearLiquidacionRepository } = require('./repositories/liquidacionRepository');
+const { crearAuspiciadorRepository } = require('./repositories/auspiciadorRepository');
 const { crearInventarioRepository } = require('./repositories/inventarioRepository');
 
 function crearApp(pool) {
@@ -11,8 +12,9 @@ function crearApp(pool) {
   const kits = crearKitRepository(pool);
   const operacion = crearOperacionRepository(pool);
   const liquidaciones = crearLiquidacionRepository(pool);
+  const auspiciadores = crearAuspiciadorRepository(pool);
   const inventario = crearInventarioRepository(pool);
-
+  
   app.use(cors());
   app.use(express.json({ limit: '64kb' }));
 
@@ -175,9 +177,51 @@ function crearApp(pool) {
     }
     next();
   });
-
   app.get('/api/eventos/:id', async (req, res, next) => {
-    try { res.json(await operacion.obtenerEvento(req.params.id)); } catch (err) { next(err); }
+    try {
+      res.json(await operacion.obtenerEvento(req.params.id));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // RF8: Registro de auspiciadores y canjes.
+  app.get('/api/auspiciadores', async (req, res, next) => {
+    try {
+      res.json(await auspiciadores.listarAuspiciadores());
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post('/api/auspiciadores', async (req, res, next) => {
+    try {
+      const resultado = await auspiciadores.crearAuspiciador(req.body || {});
+      res.status(201).json(resultado);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get('/api/eventos/:id/canjes', async (req, res, next) => {
+    try {
+      res.json(await auspiciadores.listarCanjesEvento(req.params.id));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post('/api/eventos/:id/canjes', async (req, res, next) => {
+    try {
+      const resultado = await auspiciadores.registrarCanje({
+        ...req.body,
+        eventoId: req.params.id,
+      });
+
+      res.status(201).json(resultado);
+    } catch (err) {
+      next(err);
+    }
   });
 
   app.get('/api/eventos/:id/asignaciones', async (req, res, next) => {
